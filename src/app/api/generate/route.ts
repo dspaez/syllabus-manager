@@ -3,15 +3,19 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const PROMPTS: Record<string, (topic: string) => string> = {
     slides: (topic) =>
-        `Genera una estructura de presentación sobre ${topic} con 8 slides. ` +
-        `Cada slide debe tener: título, 4 puntos clave y un campo "keyword" con 2-3 palabras técnicas en inglés. ` +
-        `Para el campo keyword de cada slide, usa términos técnicos específicos en inglés relacionados al contenido exacto de esa slide, NO al título literal. ` +
-        `Por ejemplo: si la slide es sobre historia de un lenguaje → keyword: 'software development history'; ` +
-        `si es sobre conceptos de POO → keyword: 'object oriented programming code'; ` +
-        `si es sobre instalación → keyword: 'computer setup developer'; ` +
-        `si es sobre bases de datos → keyword: 'database server technology'; ` +
-        `si es sobre redes → keyword: 'network infrastructure cables'. ` +
-        `Siempre incluye palabras como 'technology', 'computer', 'software', 'programming' o 'digital' para asegurar imágenes técnicas relevantes. ` +
+        `Eres un experto docente universitario. Genera una presentación COMPLETA y DETALLADA sobre ${topic}. ` +
+        `La presentación debe tener entre 15 y 20 slides según la complejidad del tema. ` +
+        `Cada slide debe tener: ` +
+        `- Título claro y específico ` +
+        `- Entre 4 y 6 puntos detallados (no solo títulos, sino explicaciones completas) ` +
+        `- Una keyword en inglés para imagen de fondo ` +
+        `La presentación debe seguir esta estructura: ` +
+        `1. Slide de título/introducción ` +
+        `2. Objetivos de aprendizaje ` +
+        `3-16. Contenido detallado progresivo (de básico a avanzado) ` +
+        `17. Resumen/conclusiones ` +
+        `18. Ejercicio práctico o caso de estudio ` +
+        `Incluye ejemplos concretos, definiciones precisas y aplicaciones prácticas. ` +
         `Responde en español en formato JSON: ` +
         `{ "slides": [{ "title": "", "points": [], "keyword": "" }] }`,
     exercises: (topic) =>

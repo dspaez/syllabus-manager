@@ -7,6 +7,7 @@ import TogglePublish from '@/components/TogglePublish';
 import DeleteMaterial from '@/components/DeleteMaterial';
 import DeleteRowButton from '@/components/DeleteRowButton';
 import EditMaterialName from '@/components/EditMaterialName';
+import GenerateAllContent from '@/components/GenerateAllContent';
 
 type Material = {
     id: string;
@@ -83,12 +84,15 @@ export default async function UnitPage({
                         <p className="mt-1 text-sm text-gray-500 max-w-xl">{u.description}</p>
                     )}
                 </div>
-                <Link
-                    href={`/admin/subjects/${id}/units/${unitId}/weeks/new`}
-                    className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-                >
-                    + Nueva semana
-                </Link>
+                <div className="flex items-center gap-3">
+                    <GenerateAllContent unitId={unitId} subjectId={id} />
+                    <Link
+                        href={`/admin/subjects/${id}/units/${unitId}/weeks/new`}
+                        className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                    >
+                        + Nueva semana
+                    </Link>
+                </div>
             </div>
 
             {/* Weeks error */}
