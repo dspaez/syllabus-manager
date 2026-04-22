@@ -199,9 +199,18 @@ export default function GenerateWithAI({ weekId }: Props) {
 
         try {
             const supabase = createClient();
+            
+            // Generate concise name with prefix
+            const prefix = type === 'slides' ? 'Diapositivas' : type === 'exercises' ? 'Ejercicios' : 'Guía';
+            const truncatedTopic = topic.trim().substring(0, 50);
+            const materialName = `${prefix}: ${truncatedTopic}`;
+            
+            // Determine type based on content type
+            const materialType = type === 'slides' ? 'pptx' : 'doc';
+            
             const { error: dbError } = await supabase.from('materials').insert({
-                name: topic.trim(),
-                type: 'doc',
+                name: materialName,
+                type: materialType,
                 description: JSON.stringify(result),
                 is_published: false,
                 week_id: weekId,

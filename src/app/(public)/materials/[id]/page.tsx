@@ -49,7 +49,12 @@ type MaterialRow = {
     file_url: string | null;
     weeks: {
         unit_id: string;
-        units: { subject_id: string } | null;
+        units: {
+            subject_id: string;
+            subjects: {
+                color: string | null;
+            } | null;
+        } | null;
     } | null;
 };
 
@@ -189,7 +194,7 @@ export default async function MaterialPage({
 
     const { data: material, error } = await supabase
         .from('materials')
-        .select('*, weeks(unit_id, units(subject_id))')
+        .select('*, weeks!inner(unit_id, units!inner(subject_id, subjects!inner(color)))')
         .eq('id', id)
         .single<MaterialRow>();
 
@@ -197,6 +202,7 @@ export default async function MaterialPage({
 
     const m = material as MaterialRow;
     const subjectId = m.weeks?.units?.subject_id ?? null;
+    const subjectColor = m.weeks?.units?.subjects?.color || '#185FA5';
 
     // Parse AI-generated content
     let content: AIContent | null = null;
@@ -222,6 +228,7 @@ export default async function MaterialPage({
             <SlidesPresentation
                 slides={(content as SlidesContent).slides}
                 name={m.name}
+                subjectColor={subjectColor}
             />
         );
     }

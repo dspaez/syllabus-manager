@@ -12,21 +12,10 @@ interface Slide {
 interface Props {
     slides: Slide[];
     name: string;
+    subjectColor?: string;
 }
 
 type AnimState = 'in' | 'out-next' | 'out-prev';
-
-const THEMES = [
-    { from: '#0f172a', to: '#1e3a8a', accent: '#60a5fa' }, // blue
-    { from: '#1e1b4b', to: '#6d28d9', accent: '#a78bfa' }, // purple
-    { from: '#052e16', to: '#065f46', accent: '#34d399' }, // green
-    { from: '#450a0a', to: '#991b1b', accent: '#f87171' }, // red
-    { from: '#431407', to: '#9a3412', accent: '#fb923c' }, // orange
-    { from: '#083344', to: '#0e7490', accent: '#22d3ee' }, // cyan
-];
-
-// Dot grid pattern
-const DOT_PATTERN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='white' fill-opacity='0.06'/%3E%3C/svg%3E")`;
 
 const animClasses: Record<AnimState, string> = {
     'in': 'opacity-100 translate-x-0',
@@ -34,37 +23,115 @@ const animClasses: Record<AnimState, string> = {
     'out-prev': 'opacity-0 -translate-x-16',
 };
 
-export default function SlidesPresentation({ slides, name }: Props) {
+// ── Color utilities ────────────────────────────────────────────────────────
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+        ? {
+              r: parseInt(result[1], 16),
+              g: parseInt(result[2], 16),
+              b: parseInt(result[3], 16),
+          }
+        : null;
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+    return '#' + [r, g, b].map((x) => Math.round(x).toString(16).padStart(2, '0')).join('');
+}
+
+function darkenColor(hex: string, percent: number): string {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return hex;
+    const factor = 1 - percent / 100;
+    return rgbToHex(rgb.r * factor, rgb.g * factor, rgb.b * factor);
+}
+
+function adjustColor(
+    baseColor: string,
+    slideIndex: number,
+): { from: string; to: string; accent: string } {
+    // Vary darkness slightly per slide (80% to 90% range)
+    const basePercent = 80;
+    const variance = (slideIndex % 3) * 3; // 0, 3, 6
+    const fromPercent = basePercent + variance;
+    const toPercent = 95;
+
+    return {
+        from: darkenColor(baseColor, fromPercent),
+        to: darkenColor(baseColor, toPercent),
+        accent: '#60a5fa', // light blue accent
+    };
+}
+
+// ── Animated pattern component ─────────────────────────────────────────────
+
+function AnimatedPattern({ patternType }: { patternType: number }) {
+    const shapes = [];
+    const count = 15;
+
+    for (let i = 0; i < count; i++) {
+        const size = 30 + (i % 4) * 20; // 30, 50, 70, 90
+        const left = (i * 7) % 100;
+        const top = (i * 13) % 100;
+        const delay = (i * 0.5) % 3;
+        const duration = 4 + (i % 3);
+
+        if (patternType % 2 === 0) {
+            // Hexagons
+            shapes.push(
+                <div
+                    key={i}
+                    className="absolute animate-float"
+                    style={{
+                        left: `${left}%`,
+                        top: `${top}%`,
+                        width: `${size}px`,
+                        height: `${size}px`,
+                        animationDelay: `${delay}s`,
+                        animationDuration: `${duration}s`,
+                    }}
+                >
+                    <svg viewBox="0 0 100 100" className="w-full h-full opacity-10">
+                        <polygon
+                            points="50 1 95 25 95 75 50 99 5 75 5 25"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="2"
+                        />
+                    </svg>
+                </div>,
+            );
+        } else {
+            // Circles
+            shapes.push(
+                <div
+                    key={i}
+                    className="absolute animate-float"
+                    style={{
+                        left: `${left}%`,
+                        top: `${top}%`,
+                        width: `${size}px`,
+                        height: `${size}px`,
+                        animationDelay: `${delay}s`,
+                        animationDuration: `${duration}s`,
+                    }}
+                >
+                    <svg viewBox="0 0 100 100" className="w-full h-full opacity-10">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="white" strokeWidth="2" />
+                    </svg>
+                </div>,
+            );
+        }
+    }
+
+    return <div className="absolute inset-0 overflow-hidden pointer-events-none">{shapes}</div>;
+}
+
+export default function SlidesPresentation({ slides, name, subjectColor = '#185FA5' }: Props) {
     const router = useRouter();
     const [current, setCurrent] = useState(0);
     const [anim, setAnim] = useState<AnimState>('in');
-    // keyword → image URL cache (null = loading, '' = no image found)
-    const [imageCache, setImageCache] = useState<Record<string, string | null>>({});
-
-    useEffect(() => {
-        const keyword = slides[current]?.keyword;
-        if (!keyword) return;
-        if (keyword in imageCache) return; // already fetched
-
-        setImageCache((prev) => ({ ...prev, [keyword]: null })); // mark loading
-
-        const key = process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY;
-        if (!key) return;
-
-        fetch(
-            `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword)}&per_page=1&orientation=landscape`,
-            { headers: { Authorization: `Client-ID ${key}` } },
-        )
-            .then((r) => r.json())
-            .then((data) => {
-                const url: string = data?.results?.[0]?.urls?.regular ?? '';
-                setImageCache((prev) => ({ ...prev, [keyword]: url }));
-            })
-            .catch(() => {
-                setImageCache((prev) => ({ ...prev, [keyword]: '' }));
-            });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [current]);
 
     function navigate(newIndex: number, dir: 'next' | 'prev') {
         if (anim !== 'in') return;
@@ -95,35 +162,47 @@ export default function SlidesPresentation({ slides, name }: Props) {
     }, [prev, next]);
 
     const slide = slides[current];
-    const theme = THEMES[current % THEMES.length];
+    const theme = adjustColor(subjectColor, current);
     const progress = ((current + 1) / slides.length) * 100;
-    const keyword = slide?.keyword ?? '';
-    const bgImage = keyword ? (imageCache[keyword] ?? null) : null; // null = loading/no keyword
 
     return (
-        <div
-            className="min-h-screen flex flex-col select-none transition-colors duration-500 relative"
-            style={{
-                background: `linear-gradient(135deg, ${theme.from} 0%, ${theme.to} 100%)`,
-                backgroundImage: [
-                    `linear-gradient(135deg, ${theme.from} 0%, ${theme.to} 100%)`,
-                    DOT_PATTERN,
-                ].join(', '),
-            }}
-        >
-            {/* Unsplash background image + overlay */}
-            {bgImage && (
-                <>
-                    <div
-                        className="absolute inset-0 bg-cover bg-center transition-opacity duration-700"
-                        style={{ backgroundImage: `url(${bgImage})` }}
-                    />
-                    <div className="absolute inset-0 bg-black/75" />
-                </>
-            )}
+        <>
+            {/* CSS for animation */}
+            <style jsx global>{`
+                @keyframes float {
+                    0%, 100% {
+                        transform: translateY(0px);
+                    }
+                    50% {
+                        transform: translateY(-20px);
+                    }
+                }
+                .animate-float {
+                    animation: float 4s ease-in-out infinite;
+                }
+            `}</style>
 
-            {/* All slide content sits above the background layers */}
-            <div className="relative z-10 flex flex-col flex-1">
+            <div
+                className="min-h-screen flex flex-col select-none transition-colors duration-500 relative"
+                style={{
+                    background: `linear-gradient(135deg, ${theme.from} 0%, ${theme.to} 100%)`,
+                }}
+            >
+                {/* Animated pattern overlay */}
+                <AnimatedPattern patternType={current} />
+
+                {/* Large decorative slide number */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none">
+                    <span
+                        className="text-white font-black opacity-5"
+                        style={{ fontSize: '32rem', lineHeight: 1 }}
+                    >
+                        {current + 1}
+                    </span>
+                </div>
+
+                {/* All slide content sits above the background layers */}
+                <div className="relative z-10 flex flex-col flex-1">
                 {/* Progress bar */}
                 <div className="h-1 w-full" style={{ background: 'rgba(255,255,255,0.1)' }}>
                     <div
@@ -240,6 +319,7 @@ export default function SlidesPresentation({ slides, name }: Props) {
                 </div>
             </div>{/* end z-10 wrapper */}
         </div>
+        </>
     );
 }
 

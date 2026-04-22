@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import PoliciesAccordion from './PoliciesAccordion';
 
+export const revalidate = 0;
+
 type Material = {
   id: string;
   name: string;

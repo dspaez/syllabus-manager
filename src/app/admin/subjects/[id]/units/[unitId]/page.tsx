@@ -6,6 +6,7 @@ import GenerateWithAI from '@/components/GenerateWithAI';
 import TogglePublish from '@/components/TogglePublish';
 import DeleteMaterial from '@/components/DeleteMaterial';
 import DeleteRowButton from '@/components/DeleteRowButton';
+import EditMaterialName from '@/components/EditMaterialName';
 
 type Material = {
     id: string;
@@ -161,9 +162,7 @@ export default async function UnitPage({
                                             </span>
 
                                             {/* Name */}
-                                            <span className="flex-1 text-sm font-medium text-gray-800 truncate">
-                                                {material.name}
-                                            </span>
+                                            <EditMaterialName materialId={material.id} currentName={material.name} />
 
                                             {/* Actions */}
                                             <div className="shrink-0 flex items-center gap-2">
