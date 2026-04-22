@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import DeleteRowButton from '@/components/DeleteRowButton';
 import CurriculumPlanner from '@/components/CurriculumPlanner';
+import ExportSyllabus from '@/components/ExportSyllabus';
 
 type Subject = {
     id: string;
@@ -74,6 +75,7 @@ export default async function SubjectPage({
 
                 <div className="flex items-center gap-3">
                     <CurriculumPlanner subjectId={s.id} subjectName={s.name} />
+                    <ExportSyllabus subjectId={s.id} subjectName={s.name} />
                     <Link
                         href={`/admin/subjects/${id}/units/new`}
                         className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
