@@ -5,8 +5,15 @@ import { useRouter } from 'next/navigation';
 
 interface Slide {
     title: string;
-    points: string[];
+    points?: string[];
     keyword?: string;
+    layout?: 'title' | 'list' | 'two-column' | 'code';
+    left?: string[];
+    right?: string[];
+    leftTitle?: string;
+    rightTitle?: string;
+    code?: string;
+    language?: string;
 }
 
 interface Props {
@@ -128,17 +135,170 @@ function AnimatedPattern({ patternType }: { patternType: number }) {
     return <div className="absolute inset-0 overflow-hidden pointer-events-none">{shapes}</div>;
 }
 
+function cleanText(text: string) {
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/`(.*?)`/g, '$1');
+}
+
+function resolveLayout(layout?: Slide['layout']): NonNullable<Slide['layout']> | 'list' {
+    return layout === 'title' || layout === 'list' || layout === 'two-column' || layout === 'code'
+        ? layout
+        : 'list';
+}
+
+function SlideContent({
+    slide,
+    theme,
+}: {
+    slide: Slide;
+    theme: { accent: string };
+}) {
+    const layout = resolveLayout(slide.layout);
+    const points = (slide.points ?? []).map(cleanText);
+    const leftItems = (slide.left ?? []).map(cleanText);
+    const rightItems = (slide.right ?? []).map(cleanText);
+
+    if (layout === 'title') {
+        return (
+            <div className="text-center py-6 md:py-10">
+                <h2
+                    className="text-6xl md:text-7xl font-black text-white leading-tight mb-6"
+                    style={{ textShadow: '0 2px 20px rgba(0,0,0,0.8)' }}
+                >
+                    {slide.title}
+                </h2>
+                {points.length > 0 && (
+                    <ul className="space-y-2 max-w-2xl mx-auto">
+                        {points.map((point, i) => (
+                            <li key={i} className="text-white/70 text-lg leading-relaxed">
+                                {point}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+        );
+    }
+
+    if (layout === 'two-column') {
+        return (
+            <>
+                <h2
+                    className="text-5xl md:text-6xl font-black text-white leading-tight mb-5 pl-4"
+                    style={{
+                        textShadow: '0 2px 20px rgba(0,0,0,0.8)',
+                        borderLeft: `4px solid ${theme.accent}`,
+                    }}
+                >
+                    {slide.title}
+                </h2>
+                <div className="mb-10 h-1 w-16 rounded-full" style={{ background: theme.accent }} />
+                <div className="grid md:grid-cols-2 gap-6">
+                    <div className="bg-black/35 backdrop-blur-sm rounded-xl p-4">
+                        <h3 className="text-lg font-bold mb-3" style={{ color: theme.accent }}>
+                            {slide.leftTitle || 'Columna A'}
+                        </h3>
+                        <ul className="space-y-2">
+                            {leftItems.map((item, i) => (
+                                <li key={i} className="text-white/85 text-base leading-relaxed list-disc ml-5">
+                                    {item}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    <div className="bg-black/35 backdrop-blur-sm rounded-xl p-4 md:border-l md:border-white/15">
+                        <h3 className="text-lg font-bold mb-3" style={{ color: theme.accent }}>
+                            {slide.rightTitle || 'Columna B'}
+                        </h3>
+                        <ul className="space-y-2">
+                            {rightItems.map((item, i) => (
+                                <li key={i} className="text-white/85 text-base leading-relaxed list-disc ml-5">
+                                    {item}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            </>
+        );
+    }
+
+    if (layout === 'code') {
+        return (
+            <>
+                <h2
+                    className="text-5xl md:text-6xl font-black text-white leading-tight mb-5 pl-4"
+                    style={{
+                        textShadow: '0 2px 20px rgba(0,0,0,0.8)',
+                        borderLeft: `4px solid ${theme.accent}`,
+                    }}
+                >
+                    {slide.title}
+                </h2>
+                <div className="mb-8 h-1 w-16 rounded-full" style={{ background: theme.accent }} />
+                {points.length > 0 && (
+                    <ul className="space-y-2 mb-6 max-w-3xl">
+                        {points.slice(0, 3).map((point, i) => (
+                            <li key={i} className="flex items-start gap-3 bg-black/35 backdrop-blur-sm rounded-lg px-4 py-2">
+                                <span className="mt-2 h-1.5 w-1.5 rounded-full shrink-0" style={{ background: theme.accent }} />
+                                <span className="text-white/85 text-lg font-medium leading-relaxed">{point}</span>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                <div className="relative rounded-xl bg-black/60 border border-white/10 p-4">
+                    <span
+                        className="absolute top-3 right-3 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: theme.accent, background: 'rgba(255,255,255,0.1)' }}
+                    >
+                        {slide.language || 'code'}
+                    </span>
+                    <pre className="overflow-x-auto pr-14">
+                        <code className="font-mono text-sm leading-6 whitespace-pre" style={{ color: '#86efac' }}>
+                            {slide.code || '// Código no disponible'}
+                        </code>
+                    </pre>
+                </div>
+            </>
+        );
+    }
+
+    return (
+        <>
+            <h2
+                className="text-5xl md:text-6xl font-black text-white leading-tight mb-5 pl-4"
+                style={{
+                    textShadow: '0 2px 20px rgba(0,0,0,0.8)',
+                    borderLeft: `4px solid ${theme.accent}`,
+                }}
+            >
+                {slide.title}
+            </h2>
+            <div className="mb-10 h-1 w-16 rounded-full" style={{ background: theme.accent }} />
+            <ul className="space-y-2 max-w-2xl max-h-[25rem] overflow-y-auto pr-2">
+                {points.map((point, i) => (
+                    <li key={i} className="flex items-start gap-3 bg-black/40 backdrop-blur-sm rounded-lg px-4 py-2">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                            className="mt-0.5 shrink-0 size-5"
+                            style={{ color: theme.accent }}
+                        >
+                            <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-white/85 text-lg font-medium leading-relaxed">{point}</span>
+                    </li>
+                ))}
+            </ul>
+        </>
+    );
+}
+
 export default function SlidesPresentation({ slides, name, subjectColor = '#185FA5' }: Props) {
     const router = useRouter();
     const [current, setCurrent] = useState(0);
     const [anim, setAnim] = useState<AnimState>('in');
-
-    const cleanText = (text: string) => {
-        return text
-            .replace(/\*\*(.*?)\*\*/g, '$1')  // elimina **negrita**
-            .replace(/\*(.*?)\*/g, '$1')       // elimina *itálica*
-            .replace(/`(.*?)`/g, '$1');         // elimina `código`
-    };
 
     function navigate(newIndex: number, dir: 'next' | 'prev') {
         if (anim !== 'in') return;
@@ -170,6 +330,7 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
 
     const slide = slides[current];
     const theme = adjustColor(subjectColor, current);
+    const activeLayout = resolveLayout(slide?.layout);
     const progress = ((current + 1) / slides.length) * 100;
 
     return (
@@ -192,7 +353,10 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
             <div
                 className="min-h-screen flex flex-col select-none transition-colors duration-500 relative"
                 style={{
-                    background: `linear-gradient(135deg, ${theme.from} 0%, ${theme.to} 100%)`,
+                    background:
+                        activeLayout === 'title'
+                            ? `linear-gradient(135deg, ${darkenColor(subjectColor, 55)} 0%, ${darkenColor(subjectColor, 82)} 100%)`
+                            : `linear-gradient(135deg, ${theme.from} 0%, ${theme.to} 100%)`,
                 }}
             >
                 {/* Animated pattern overlay */}
@@ -251,7 +415,7 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
                         <div className={`w-full max-w-3xl transition-all duration-200 ease-in-out ${animClasses[anim]}`}>
 
                             {/* Slide number badge */}
-                            <div className="mb-8 flex items-center gap-3">
+                            <div className="mb-8 flex justify-end">
                                 <span
                                     className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase"
                                     style={{ background: 'rgba(255,255,255,0.12)', color: theme.accent }}
@@ -260,38 +424,7 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
                                 </span>
                             </div>
 
-                            {/* Title */}
-                            <h2
-                                className="text-5xl md:text-6xl font-black text-white leading-tight mb-5 pl-4"
-                                style={{
-                                    textShadow: '0 2px 20px rgba(0,0,0,0.8)',
-                                    borderLeft: `4px solid ${theme.accent}`,
-                                }}
-                            >
-                                {slide.title}
-                            </h2>
-
-                            {/* Accent underline */}
-                            <div
-                                className="mb-10 h-1 w-16 rounded-full"
-                                style={{ background: theme.accent }}
-                            />
-
-                            {/* Points */}
-                            <ul className="space-y-2 max-w-2xl">
-                                {slide.points.map((point, i) => (
-                                    <li key={i} className="flex items-start gap-3 bg-black/40 backdrop-blur-sm rounded-lg px-4 py-2">
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                                            className="mt-0.5 shrink-0 size-5"
-                                            style={{ color: theme.accent }}
-                                        >
-                                            <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
-                                        </svg>
-                                        <span className="text-white/85 text-lg font-medium leading-relaxed">{cleanText(point)}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                            <SlideContent slide={slide} theme={theme} />
                         </div>
                     </div>
 
@@ -329,4 +462,3 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
         </>
     );
 }
-
