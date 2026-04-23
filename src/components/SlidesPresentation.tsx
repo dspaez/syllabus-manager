@@ -355,23 +355,16 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
             if (activeElement) {
                 if (document.exitFullscreen) {
                     await document.exitFullscreen();
-                    return;
-                }
-                if (doc.webkitExitFullscreen) {
+                } else if (doc.webkitExitFullscreen) {
                     await doc.webkitExitFullscreen();
                 }
-                return;
-            }
-
-            if (root.requestFullscreen) {
+            } else if (root.requestFullscreen) {
                 await root.requestFullscreen();
-                return;
-            }
-            if (root.webkitRequestFullscreen) {
+            } else if (root.webkitRequestFullscreen) {
                 await root.webkitRequestFullscreen();
             }
-        } catch {
-            return;
+        } catch (error) {
+            console.warn('Unable to toggle fullscreen mode.', error);
         }
     }, []);
 
@@ -400,7 +393,7 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
                     target.tagName === 'TEXTAREA' ||
                     target.isContentEditable);
 
-            if (!isTypingTarget && e.key.toLowerCase() === 'f') void toggleFullscreen();
+            if (!isTypingTarget && e.key.toLowerCase() === 'f') toggleFullscreen();
         }
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
@@ -466,7 +459,7 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
                     <div className="flex items-center gap-1">
                         {fullscreenEnabled && (
                             <button
-                                onClick={() => void toggleFullscreen()}
+                                onClick={toggleFullscreen}
                                 className="text-white/40 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
                                 aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Entrar a pantalla completa'}
                             >
