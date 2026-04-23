@@ -68,16 +68,15 @@ function adjustColor(
     baseColor: string,
     slideIndex: number,
 ): { from: string; to: string; accent: string } {
-    // Vary darkness slightly per slide (80% to 90% range)
     const basePercent = 80;
-    const variance = (slideIndex % 3) * 3; // 0, 3, 6
+    const variance = (slideIndex % 3) * 3;
     const fromPercent = basePercent + variance;
     const toPercent = 95;
 
     return {
         from: darkenColor(baseColor, fromPercent),
         to: darkenColor(baseColor, toPercent),
-        accent: '#60a5fa', // light blue accent
+        accent: '#60a5fa',
     };
 }
 
@@ -88,14 +87,13 @@ function AnimatedPattern({ patternType }: { patternType: number }) {
     const count = 15;
 
     for (let i = 0; i < count; i++) {
-        const size = 30 + (i % 4) * 20; // 30, 50, 70, 90
+        const size = 30 + (i % 4) * 20;
         const left = (i * 7) % 100;
         const top = (i * 13) % 100;
         const delay = (i * 0.5) % 3;
         const duration = 4 + (i % 3);
 
         if (patternType % 2 === 0) {
-            // Hexagons
             shapes.push(
                 <div
                     key={i}
@@ -120,7 +118,6 @@ function AnimatedPattern({ patternType }: { patternType: number }) {
                 </div>,
             );
         } else {
-            // Circles
             shapes.push(
                 <div
                     key={i}
@@ -323,18 +320,9 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
     const router = useRouter();
     const [current, setCurrent] = useState(0);
     const [anim, setAnim] = useState<AnimState>('in');
-    const [isFullscreen, setIsFullscreen] = useState(() => {
-        if (typeof document === 'undefined') return false;
-        const doc = document as FullscreenDocument;
-        return Boolean(document.fullscreenElement || doc.webkitFullscreenElement);
-    });
-    const fullscreenEnabled =
-        typeof document !== 'undefined'
-            ? Boolean(
-                  document.fullscreenEnabled ||
-                      (document as FullscreenDocument).webkitFullscreenEnabled,
-              )
-            : false;
+    // ✅ Fix hydration: always start false on SSR, sync on client via useEffect
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [fullscreenEnabled, setFullscreenEnabled] = useState(false);
 
     function navigate(newIndex: number, dir: 'next' | 'prev') {
         if (anim !== 'in') return;
@@ -378,7 +366,13 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
     }, []);
 
     const exportToPDF = useCallback(() => {
-        function buildSlideHTML(slide: Slide, layout: NonNullable<Slide['layout']>, theme: { accent: string }, index: number, total: number): string {
+        function buildSlideHTML(
+            slide: Slide,
+            layout: NonNullable<Slide['layout']>,
+            theme: { accent: string },
+            index: number,
+            total: number,
+        ): string {
             const points = (slide.points ?? []).map(p => escapeHTML(cleanText(p)));
             const leftItems = (slide.left ?? []).map(p => escapeHTML(cleanText(p)));
             const rightItems = (slide.right ?? []).map(p => escapeHTML(cleanText(p)));
@@ -389,31 +383,31 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
             const accent = escapeHTML(theme.accent);
 
             if (layout === 'title') {
-                return `<div style="text-align:center; padding: 2rem 0;">
-  <div style="font-size:0.75rem; letter-spacing:0.2em; color: ${accent}; margin-bottom:1.5rem; text-transform:uppercase;">${index + 1} / ${total}</div>
-  <h1 style="font-size:3.5rem; font-weight:900; margin:0 0 1.5rem; line-height:1.1; color:white;">${title}</h1>
-  <ul style="list-style:none;padding:0;margin:0 auto;max-width:600px;">
-    ${points.map(p => `<li style="color:rgba(255,255,255,0.7);font-size:1.1rem;margin-bottom:0.5rem;">${p}</li>`).join('')}
+                return `<div style="text-align:center;padding:2rem 0;">
+  <div style="font-size:0.7rem;letter-spacing:0.2em;color:${accent};margin-bottom:1.5rem;text-transform:uppercase;">${index + 1} / ${total}</div>
+  <h1 style="font-size:3rem;font-weight:900;margin:0 0 1.5rem;line-height:1.1;color:white;">${title}</h1>
+  <ul style="list-style:none;padding:0;margin:0 auto;max-width:500px;">
+    ${points.map(p => `<li style="color:rgba(255,255,255,0.7);font-size:1rem;margin-bottom:0.5rem;">${p}</li>`).join('')}
   </ul>
 </div>`;
             }
 
             if (layout === 'two-column') {
                 return `<div>
-  <div style="font-size:0.75rem; letter-spacing:0.2em; color: ${accent}; margin-bottom:1rem; text-transform:uppercase;">${index + 1} / ${total}</div>
-  <h2 style="font-size:2.5rem; font-weight:900; border-left:4px solid ${accent}; padding-left:1rem; margin:0 0 0.5rem; color:white;">${title}</h2>
-  <div style="height:3px;width:3rem;background:${accent};border-radius:9999px;margin-bottom:1.5rem;"></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
-    <div style="background:rgba(0,0,0,0.3);border-radius:0.75rem;padding:1rem;">
-      <h3 style="color:${accent};font-weight:700;margin:0 0 0.75rem;">${leftTitle}</h3>
-      <ul style="list-style:disc;padding-left:1.25rem;margin:0;color:white;">
-        ${leftItems.map(item => `<li style="margin-bottom:0.4rem;font-size:0.95rem;">${item}</li>`).join('')}
+  <div style="font-size:0.7rem;letter-spacing:0.2em;color:${accent};margin-bottom:0.75rem;text-transform:uppercase;">${index + 1} / ${total}</div>
+  <h2 style="font-size:2rem;font-weight:900;border-left:4px solid ${accent};padding-left:1rem;margin:0 0 0.4rem;color:white;">${title}</h2>
+  <div style="height:3px;width:2.5rem;background:${accent};border-radius:9999px;margin-bottom:1rem;"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+    <div style="background:rgba(0,0,0,0.3);border-radius:0.5rem;padding:0.75rem;">
+      <h3 style="color:${accent};font-weight:700;margin:0 0 0.5rem;font-size:0.95rem;">${leftTitle}</h3>
+      <ul style="list-style:disc;padding-left:1.1rem;margin:0;color:white;">
+        ${leftItems.map(item => `<li style="margin-bottom:0.3rem;font-size:0.85rem;">${item}</li>`).join('')}
       </ul>
     </div>
-    <div style="background:rgba(0,0,0,0.3);border-radius:0.75rem;padding:1rem;border-left:1px solid rgba(255,255,255,0.1);">
-      <h3 style="color:${accent};font-weight:700;margin:0 0 0.75rem;">${rightTitle}</h3>
-      <ul style="list-style:disc;padding-left:1.25rem;margin:0;color:white;">
-        ${rightItems.map(item => `<li style="margin-bottom:0.4rem;font-size:0.95rem;">${item}</li>`).join('')}
+    <div style="background:rgba(0,0,0,0.3);border-radius:0.5rem;padding:0.75rem;border-left:1px solid rgba(255,255,255,0.1);">
+      <h3 style="color:${accent};font-weight:700;margin:0 0 0.5rem;font-size:0.95rem;">${rightTitle}</h3>
+      <ul style="list-style:disc;padding-left:1.1rem;margin:0;color:white;">
+        ${rightItems.map(item => `<li style="margin-bottom:0.3rem;font-size:0.85rem;">${item}</li>`).join('')}
       </ul>
     </div>
   </div>
@@ -422,25 +416,25 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
 
             if (layout === 'code') {
                 return `<div>
-  <div style="font-size:0.75rem; letter-spacing:0.2em; color: ${accent}; margin-bottom:1rem; text-transform:uppercase;">${index + 1} / ${total}</div>
-  <h2 style="font-size:2.5rem; font-weight:900; border-left:4px solid ${accent}; padding-left:1rem; margin:0 0 0.5rem; color:white;">${title}</h2>
-  <div style="height:3px;width:3rem;background:${accent};border-radius:9999px;margin-bottom:1rem;"></div>
-  ${points.slice(0, 3).map(p => `<div style="background:rgba(0,0,0,0.3);border-radius:0.5rem;padding:0.4rem 1rem;margin-bottom:0.3rem;font-size:0.9rem;color:white;">${p}</div>`).join('')}
-  <div style="background:rgba(0,0,0,0.6);border-radius:0.75rem;padding:1rem;margin-top:0.75rem;border:1px solid rgba(255,255,255,0.1);position:relative;">
-    <span style="position:absolute;top:0.5rem;right:0.75rem;font-size:0.7rem;color:${accent};text-transform:uppercase;letter-spacing:0.1em;">${language}</span>
-    <pre style="font-family:monospace;font-size:0.8rem;color:#86efac;margin:0;white-space:pre-wrap;word-break:break-word;">${escapeHTML(slide.code || '// Código no disponible')}</pre>
+  <div style="font-size:0.7rem;letter-spacing:0.2em;color:${accent};margin-bottom:0.75rem;text-transform:uppercase;">${index + 1} / ${total}</div>
+  <h2 style="font-size:2rem;font-weight:900;border-left:4px solid ${accent};padding-left:1rem;margin:0 0 0.4rem;color:white;">${title}</h2>
+  <div style="height:3px;width:2.5rem;background:${accent};border-radius:9999px;margin-bottom:0.75rem;"></div>
+  ${points.slice(0, 3).map(p => `<div style="background:rgba(0,0,0,0.3);border-radius:0.4rem;padding:0.3rem 0.75rem;margin-bottom:0.25rem;font-size:0.85rem;color:white;">${p}</div>`).join('')}
+  <div style="background:rgba(0,0,0,0.6);border-radius:0.5rem;padding:0.75rem;margin-top:0.5rem;border:1px solid rgba(255,255,255,0.1);position:relative;">
+    <span style="position:absolute;top:0.4rem;right:0.5rem;font-size:0.65rem;color:${accent};text-transform:uppercase;letter-spacing:0.1em;">${language}</span>
+    <pre style="font-family:monospace;font-size:0.75rem;color:#86efac;margin:0;white-space:pre-wrap;word-break:break-word;">${escapeHTML(slide.code || '// Código no disponible')}</pre>
   </div>
 </div>`;
             }
 
             // default: list
             return `<div>
-  <div style="font-size:0.75rem; letter-spacing:0.2em; color: ${accent}; margin-bottom:1rem; text-transform:uppercase;">${index + 1} / ${total}</div>
-  <h2 style="font-size:2.5rem; font-weight:900; border-left:4px solid ${accent}; padding-left:1rem; margin:0 0 0.5rem; color:white;">${title}</h2>
-  <div style="height:3px;width:3rem;background:${accent};border-radius:9999px;margin-bottom:1.5rem;"></div>
+  <div style="font-size:0.7rem;letter-spacing:0.2em;color:${accent};margin-bottom:0.75rem;text-transform:uppercase;">${index + 1} / ${total}</div>
+  <h2 style="font-size:2rem;font-weight:900;border-left:4px solid ${accent};padding-left:1rem;margin:0 0 0.4rem;color:white;">${title}</h2>
+  <div style="height:3px;width:2.5rem;background:${accent};border-radius:9999px;margin-bottom:1rem;"></div>
   <ul style="list-style:none;padding:0;margin:0;">
-    ${points.map(p => `<li style="display:flex;gap:0.75rem;background:rgba(0,0,0,0.3);border-radius:0.5rem;padding:0.5rem 1rem;margin-bottom:0.4rem;font-size:1rem;line-height:1.5;color:white;">
-      <span style="color:${accent};margin-top:2px;">✓</span>
+    ${points.map(p => `<li style="display:flex;gap:0.5rem;background:rgba(0,0,0,0.3);border-radius:0.4rem;padding:0.4rem 0.75rem;margin-bottom:0.3rem;font-size:0.9rem;line-height:1.4;color:white;">
+      <span style="color:${accent};flex-shrink:0;">✓</span>
       <span>${p}</span>
     </li>`).join('')}
   </ul>
@@ -449,7 +443,8 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
 
         const printContainer = document.createElement('div');
         printContainer.id = 'slides-print-container';
-        printContainer.style.cssText = 'position:fixed;top:0;left:0;width:100%;z-index:99999;display:none;';
+        // Hidden from normal view; @media print will show it
+        printContainer.style.cssText = 'display:none;';
 
         slides.forEach((slide, index) => {
             const layout = resolveLayout(slide.layout);
@@ -463,38 +458,62 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
 
             const page = document.createElement('div');
             page.className = 'slide-print-page';
-            page.style.cssText = `background: linear-gradient(135deg, ${bgColor} 0%, ${bgColorTo} 100%); color: white;`;
+            page.style.cssText = `background:linear-gradient(135deg,${bgColor} 0%,${bgColorTo} 100%);color:white;`;
             page.innerHTML = buildSlideHTML(slide, layout, theme, index, slides.length);
             printContainer.appendChild(page);
         });
 
         const style = document.createElement('style');
         style.id = 'slides-print-styles';
+        // ✅ Fix: use @page size + fixed height in mm so each slide fills exactly one printed page
         style.textContent = `
+            @page { size: A4 landscape; margin: 0; }
             @media print {
-                body * { visibility: hidden !important; }
-                #slides-print-container, #slides-print-container * { visibility: visible !important; }
-                #slides-print-container { display: block !important; position: absolute; top: 0; left: 0; width: 100%; }
-                .slide-print-page { page-break-after: always; break-after: page; min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; padding: 3rem; box-sizing: border-box; }
-                .slide-print-page:last-child { page-break-after: avoid; break-after: avoid; }
+                body * { display: none !important; }
+                #slides-print-container { display: block !important; }
+                #slides-print-container * { display: revert !important; }
+                .slide-print-page {
+                    display: flex !important;
+                    flex-direction: column;
+                    justify-content: center;
+                    width: 297mm;
+                    height: 210mm;
+                    padding: 2cm 2.5cm;
+                    box-sizing: border-box;
+                    overflow: hidden;
+                    page-break-after: always;
+                    break-after: page;
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                }
+                .slide-print-page:last-child {
+                    page-break-after: avoid;
+                    break-after: avoid;
+                }
             }
         `;
 
         document.head.appendChild(style);
         document.body.appendChild(printContainer);
 
-        // Use afterprint event to clean up once the print dialog closes
         const cleanup = () => {
             style.parentNode?.removeChild(style);
             printContainer.parentNode?.removeChild(printContainer);
         };
         window.addEventListener('afterprint', cleanup, { once: true });
 
-        // Small delay to allow the DOM to update before opening the print dialog
         setTimeout(() => {
             window.print();
-        }, 100);
+        }, 150);
     }, [slides, subjectColor]);
+
+    // ✅ Fix hydration: check fullscreen support only on client
+    useEffect(() => {
+        const doc = document as FullscreenDocument;
+        setFullscreenEnabled(
+            Boolean(document.fullscreenEnabled || doc.webkitFullscreenEnabled)
+        );
+    }, []);
 
     useEffect(() => {
         const doc = document as FullscreenDocument;
