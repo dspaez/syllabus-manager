@@ -366,6 +366,25 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
     }, []);
 
     const exportToPDF = useCallback(() => {
+        function buildBackgroundPattern(index: number): string {
+            const isEven = index % 2 === 0;
+            const shapes: string[] = [];
+            for (let i = 0; i < 15; i++) {
+                const size = 30 + (i % 4) * 20;
+                const left = (i * 7) % 100;
+                const top = (i * 13) % 100;
+                const svgInner = isEven
+                    ? `<polygon points="50 1 95 25 95 75 50 99 5 75 5 25" fill="none" stroke="white" stroke-width="2"/>`
+                    : `<circle cx="50" cy="50" r="45" fill="none" stroke="white" stroke-width="2"/>`;
+                shapes.push(
+                    `<div style="position:absolute;left:${left}%;top:${top}%;width:${size}px;height:${size}px;pointer-events:none;">` +
+                    `<svg viewBox="0 0 100 100" style="width:100%;height:100%;opacity:0.08;">${svgInner}</svg>` +
+                    `</div>`
+                );
+            }
+            return `<div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;">${shapes.join('')}</div>`;
+        }
+
         function buildSlideHTML(
             slide: Slide,
             layout: NonNullable<Slide['layout']>,
@@ -381,64 +400,84 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
             const rightTitle = escapeHTML(slide.rightTitle || 'Columna B');
             const language = escapeHTML(slide.language || 'code');
             const accent = escapeHTML(theme.accent);
+            const progress = ((index + 1) / total) * 100;
+            const escapedName = escapeHTML(name);
+
+            const bgPattern = buildBackgroundPattern(index);
+
+            const bigNumber = `<div aria-hidden="true" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:0;">` +
+                `<span style="font-size:28rem;font-weight:900;color:rgba(255,255,255,0.05);line-height:1;">${index + 1}</span>` +
+                `</div>`;
+
+            const progressBar = `<div style="position:absolute;top:0;left:0;width:100%;height:4px;background:rgba(255,255,255,0.1);">` +
+                `<div style="width:${progress}%;height:100%;background:${accent};"></div>` +
+                `</div>`;
+
+            const badge = `<div style="position:absolute;top:1.2rem;right:1.5rem;background:rgba(255,255,255,0.12);border-radius:9999px;padding:0.2rem 0.75rem;font-size:0.65rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:${accent};">` +
+                `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}` +
+                `</div>`;
+
+            const footer = layout !== 'title'
+                ? `<div style="position:absolute;bottom:0.75rem;left:1.5rem;font-size:0.6rem;color:rgba(255,255,255,0.3);letter-spacing:0.05em;">${escapedName}</div>`
+                : '';
 
             if (layout === 'title') {
-                return `<div style="text-align:center;padding:2rem 0;">
-  <div style="font-size:0.7rem;letter-spacing:0.2em;color:${accent};margin-bottom:1.5rem;text-transform:uppercase;">${index + 1} / ${total}</div>
-  <h1 style="font-size:3rem;font-weight:900;margin:0 0 1.5rem;line-height:1.1;color:white;">${title}</h1>
+                const content = `<div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:2rem;">
+  <h1 style="font-size:3.5rem;font-weight:900;margin:0 0 1.5rem;line-height:1.1;color:white;text-shadow:0 2px 20px rgba(0,0,0,0.8);">${title}</h1>
   <ul style="list-style:none;padding:0;margin:0 auto;max-width:500px;">
     ${points.map(p => `<li style="color:rgba(255,255,255,0.7);font-size:1rem;margin-bottom:0.5rem;">${p}</li>`).join('')}
   </ul>
 </div>`;
+                return bgPattern + bigNumber + progressBar + badge + content + footer;
             }
 
             if (layout === 'two-column') {
-                return `<div>
-  <div style="font-size:0.7rem;letter-spacing:0.2em;color:${accent};margin-bottom:0.75rem;text-transform:uppercase;">${index + 1} / ${total}</div>
-  <h2 style="font-size:2rem;font-weight:900;border-left:4px solid ${accent};padding-left:1rem;margin:0 0 0.4rem;color:white;">${title}</h2>
+                const content = `<div style="position:relative;z-index:1;padding:2.5rem 2.5rem 2rem;">
+  <h2 style="font-size:2.5rem;font-weight:900;border-left:4px solid ${accent};padding-left:1rem;margin:0 0 0.4rem;color:white;text-shadow:0 2px 20px rgba(0,0,0,0.8);">${title}</h2>
   <div style="height:3px;width:2.5rem;background:${accent};border-radius:9999px;margin-bottom:1rem;"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-    <div style="background:rgba(0,0,0,0.3);border-radius:0.5rem;padding:0.75rem;">
+    <div style="background:rgba(0,0,0,0.35);border-radius:0.75rem;padding:0.75rem;">
       <h3 style="color:${accent};font-weight:700;margin:0 0 0.5rem;font-size:0.95rem;">${leftTitle}</h3>
-      <ul style="list-style:disc;padding-left:1.1rem;margin:0;color:white;">
+      <ul style="list-style:disc;padding-left:1.1rem;margin:0;color:rgba(255,255,255,0.85);">
         ${leftItems.map(item => `<li style="margin-bottom:0.3rem;font-size:0.85rem;">${item}</li>`).join('')}
       </ul>
     </div>
-    <div style="background:rgba(0,0,0,0.3);border-radius:0.5rem;padding:0.75rem;border-left:1px solid rgba(255,255,255,0.1);">
+    <div style="background:rgba(0,0,0,0.35);border-radius:0.75rem;padding:0.75rem;border-left:1px solid rgba(255,255,255,0.15);">
       <h3 style="color:${accent};font-weight:700;margin:0 0 0.5rem;font-size:0.95rem;">${rightTitle}</h3>
-      <ul style="list-style:disc;padding-left:1.1rem;margin:0;color:white;">
+      <ul style="list-style:disc;padding-left:1.1rem;margin:0;color:rgba(255,255,255,0.85);">
         ${rightItems.map(item => `<li style="margin-bottom:0.3rem;font-size:0.85rem;">${item}</li>`).join('')}
       </ul>
     </div>
   </div>
 </div>`;
+                return bgPattern + bigNumber + progressBar + badge + content + footer;
             }
 
             if (layout === 'code') {
-                return `<div>
-  <div style="font-size:0.7rem;letter-spacing:0.2em;color:${accent};margin-bottom:0.75rem;text-transform:uppercase;">${index + 1} / ${total}</div>
-  <h2 style="font-size:2rem;font-weight:900;border-left:4px solid ${accent};padding-left:1rem;margin:0 0 0.4rem;color:white;">${title}</h2>
+                const content = `<div style="position:relative;z-index:1;padding:2.5rem 2.5rem 2rem;">
+  <h2 style="font-size:2.5rem;font-weight:900;border-left:4px solid ${accent};padding-left:1rem;margin:0 0 0.4rem;color:white;text-shadow:0 2px 20px rgba(0,0,0,0.8);">${title}</h2>
   <div style="height:3px;width:2.5rem;background:${accent};border-radius:9999px;margin-bottom:0.75rem;"></div>
-  ${points.slice(0, 3).map(p => `<div style="background:rgba(0,0,0,0.3);border-radius:0.4rem;padding:0.3rem 0.75rem;margin-bottom:0.25rem;font-size:0.85rem;color:white;">${p}</div>`).join('')}
-  <div style="background:rgba(0,0,0,0.6);border-radius:0.5rem;padding:0.75rem;margin-top:0.5rem;border:1px solid rgba(255,255,255,0.1);position:relative;">
+  ${points.slice(0, 3).map(p => `<div style="display:flex;align-items:center;gap:0.5rem;background:rgba(0,0,0,0.4);border-radius:0.5rem;padding:0.4rem 0.75rem;margin-bottom:0.25rem;font-size:0.85rem;color:rgba(255,255,255,0.85);"><span style="width:6px;height:6px;border-radius:50%;background:${accent};flex-shrink:0;display:inline-block;"></span>${p}</div>`).join('')}
+  <div style="background:rgba(0,0,0,0.6);border-radius:0.75rem;padding:0.75rem;margin-top:0.5rem;border:1px solid rgba(255,255,255,0.1);position:relative;">
     <span style="position:absolute;top:0.4rem;right:0.5rem;font-size:0.65rem;color:${accent};text-transform:uppercase;letter-spacing:0.1em;">${language}</span>
     <pre style="font-family:monospace;font-size:0.75rem;color:#86efac;margin:0;white-space:pre-wrap;word-break:break-word;">${escapeHTML(slide.code || '// Código no disponible')}</pre>
   </div>
 </div>`;
+                return bgPattern + bigNumber + progressBar + badge + content + footer;
             }
 
             // default: list
-            return `<div>
-  <div style="font-size:0.7rem;letter-spacing:0.2em;color:${accent};margin-bottom:0.75rem;text-transform:uppercase;">${index + 1} / ${total}</div>
-  <h2 style="font-size:2rem;font-weight:900;border-left:4px solid ${accent};padding-left:1rem;margin:0 0 0.4rem;color:white;">${title}</h2>
+            const content = `<div style="position:relative;z-index:1;padding:2.5rem 2.5rem 2rem;">
+  <h2 style="font-size:2.5rem;font-weight:900;border-left:4px solid ${accent};padding-left:1rem;margin:0 0 0.4rem;color:white;text-shadow:0 2px 20px rgba(0,0,0,0.8);">${title}</h2>
   <div style="height:3px;width:2.5rem;background:${accent};border-radius:9999px;margin-bottom:1rem;"></div>
   <ul style="list-style:none;padding:0;margin:0;">
-    ${points.map(p => `<li style="display:flex;gap:0.5rem;background:rgba(0,0,0,0.3);border-radius:0.4rem;padding:0.4rem 0.75rem;margin-bottom:0.3rem;font-size:0.9rem;line-height:1.4;color:white;">
+    ${points.map(p => `<li style="display:flex;gap:0.5rem;align-items:flex-start;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);border-radius:0.5rem;padding:0.4rem 0.75rem;margin-bottom:0.3rem;font-size:0.9rem;line-height:1.4;color:rgba(255,255,255,0.85);">
       <span style="color:${accent};flex-shrink:0;">✓</span>
       <span>${p}</span>
     </li>`).join('')}
   </ul>
 </div>`;
+            return bgPattern + bigNumber + progressBar + badge + content + footer;
         }
 
         const printContainer = document.createElement('div');
@@ -458,29 +497,27 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
 
             const page = document.createElement('div');
             page.className = 'slide-print-page';
-            page.style.cssText = `background:linear-gradient(135deg,${bgColor} 0%,${bgColorTo} 100%);color:white;`;
+            page.style.cssText = `background:linear-gradient(135deg,${bgColor} 0%,${bgColorTo} 100%);color:white;position:relative;overflow:hidden;`;
             page.innerHTML = buildSlideHTML(slide, layout, theme, index, slides.length);
             printContainer.appendChild(page);
         });
 
         const style = document.createElement('style');
         style.id = 'slides-print-styles';
-        // ✅ Fix: use @page size + fixed height in mm so each slide fills exactly one printed page
         style.textContent = `
             @page { size: A4 landscape; margin: 0; }
             @media print {
+                .slide-print-page,
+                .slide-print-page * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
                 body * { display: none !important; }
                 #slides-print-container { display: block !important; }
                 #slides-print-container * { display: revert !important; }
                 .slide-print-page {
-                    display: flex !important;
-                    flex-direction: column;
-                    justify-content: center;
                     width: 297mm;
                     height: 210mm;
-                    padding: 2cm 2.5cm;
                     box-sizing: border-box;
                     overflow: hidden;
+                    position: relative;
                     page-break-after: always;
                     break-after: page;
                     page-break-inside: avoid;
@@ -505,7 +542,7 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
         setTimeout(() => {
             window.print();
         }, 150);
-    }, [slides, subjectColor]);
+    }, [slides, subjectColor, name]);
 
     // ✅ Fix hydration: check fullscreen support only on client
     useEffect(() => {
