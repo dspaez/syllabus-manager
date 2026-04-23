@@ -24,6 +24,16 @@ interface Props {
 
 type AnimState = 'in' | 'out-next' | 'out-prev';
 
+type FullscreenDocument = Document & {
+    webkitFullscreenElement?: Element | null;
+    webkitFullscreenEnabled?: boolean;
+    webkitExitFullscreen?: () => Promise<void> | void;
+};
+
+type FullscreenElement = HTMLElement & {
+    webkitRequestFullscreen?: () => Promise<void> | void;
+};
+
 const animClasses: Record<AnimState, string> = {
     'in': 'opacity-100 translate-x-0',
     'out-next': 'opacity-0 translate-x-16',
@@ -304,6 +314,18 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
     const router = useRouter();
     const [current, setCurrent] = useState(0);
     const [anim, setAnim] = useState<AnimState>('in');
+    const [isFullscreen, setIsFullscreen] = useState(() => {
+        if (typeof document === 'undefined') return false;
+        const doc = document as FullscreenDocument;
+        return Boolean(document.fullscreenElement || doc.webkitFullscreenElement);
+    });
+    const fullscreenEnabled =
+        typeof document !== 'undefined'
+            ? Boolean(
+                  document.fullscreenEnabled ||
+                      (document as FullscreenDocument).webkitFullscreenEnabled,
+              )
+            : false;
 
     function navigate(newIndex: number, dir: 'next' | 'prev') {
         if (anim !== 'in') return;
@@ -324,14 +346,58 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [current, slides.length, anim]);
 
+    const toggleFullscreen = useCallback(async () => {
+        const doc = document as FullscreenDocument;
+        const root = document.documentElement as FullscreenElement;
+        const activeElement = document.fullscreenElement || doc.webkitFullscreenElement;
+
+        try {
+            if (activeElement) {
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if (doc.webkitExitFullscreen) {
+                    await doc.webkitExitFullscreen();
+                }
+            } else if (root.requestFullscreen) {
+                await root.requestFullscreen();
+            } else if (root.webkitRequestFullscreen) {
+                await root.webkitRequestFullscreen();
+            }
+        } catch (error) {
+            console.warn('Unable to toggle fullscreen mode.', error);
+        }
+    }, []);
+
+    useEffect(() => {
+        const doc = document as FullscreenDocument;
+        const syncFullscreenState = () =>
+            setIsFullscreen(Boolean(document.fullscreenElement || doc.webkitFullscreenElement));
+
+        document.addEventListener('fullscreenchange', syncFullscreenState);
+        document.addEventListener('webkitfullscreenchange', syncFullscreenState);
+
+        return () => {
+            document.removeEventListener('fullscreenchange', syncFullscreenState);
+            document.removeEventListener('webkitfullscreenchange', syncFullscreenState);
+        };
+    }, []);
+
     useEffect(() => {
         function handleKey(e: KeyboardEvent) {
             if (e.key === 'ArrowLeft') prev();
             if (e.key === 'ArrowRight') next();
+            const target = e.target as HTMLElement | null;
+            const isTypingTarget =
+                target &&
+                (target.tagName === 'INPUT' ||
+                    target.tagName === 'TEXTAREA' ||
+                    target.isContentEditable);
+
+            if (!isTypingTarget && e.key.toLowerCase() === 'f') toggleFullscreen();
         }
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
-    }, [prev, next]);
+    }, [prev, next, toggleFullscreen]);
 
     const slide = slides[current];
     const theme = adjustColor(subjectColor, current);
@@ -388,17 +454,34 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
                 </div>
 
                 {/* Top bar */}
-                <div className="flex items-center justify-between px-8 py-4">
-                    <span className="text-white/40 text-sm truncate max-w-sm">{name}</span>
-                    <button
-                        onClick={() => router.back()}
-                        className="text-white/40 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
-                        aria-label="Salir de la presentación"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-5">
-                            <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                        </svg>
-                    </button>
+                <div className={`flex items-center justify-between px-8 transition-all ${isFullscreen ? 'py-2 bg-black/20 backdrop-blur-sm' : 'py-4'}`}>
+                    <span className={`text-sm truncate max-w-sm transition-colors ${isFullscreen ? 'text-white/30' : 'text-white/40'}`}>{name}</span>
+                    <div className="flex items-center gap-1">
+                        {fullscreenEnabled && (
+                            <button
+                                onClick={toggleFullscreen}
+                                className="text-white/40 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
+                                aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Entrar a pantalla completa'}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5">
+                                    {isFullscreen ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25" />
+                                    ) : (
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                                    )}
+                                </svg>
+                            </button>
+                        )}
+                        <button
+                            onClick={() => router.back()}
+                            className="text-white/40 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
+                            aria-label="Salir de la presentación"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-5">
+                                <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Slide area with side nav */}
