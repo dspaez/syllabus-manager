@@ -6,20 +6,29 @@ const PROMPTS: Record<string, (topic: string) => string> = {
         `Eres un docente universitario experto. Genera una presentación académica COMPLETA sobre ${topic} para estudiantes universitarios de tecnología. ` +
         `\n\nREGLAS IMPORTANTES:\n` +
         `- NO uses markdown (**negrita**, *itálica*) en ningún punto\n` +
+        `- Escribe todo en español\n` +
         `- Cada punto debe ser una explicación completa de 1-2 líneas\n` +
         `- Incluye conceptos técnicos precisos con terminología correcta\n` +
         `- Agrega ejemplos concretos y casos de uso reales\n` +
         `- El contenido debe ser de nivel universitario, no básico\n` +
-        `\nGenera entre 12 y 15 slides con esta estructura:\n` +
-        `1. Introducción y contexto del tema\n` +
-        `2. Objetivos de aprendizaje (qué sabrá el estudiante al finalizar)\n` +
-        `3-12. Contenido técnico progresivo con ejemplos y aplicaciones\n` +
-        `13. Caso práctico o ejercicio aplicado\n` +
-        `14. Resumen y conclusiones\n` +
-        `15. Referencias y recursos adicionales\n` +
-        `\nCada slide: máximo 5 puntos, cada punto máximo 2 líneas, sin markdown, con terminología técnica precisa. ` +
-        `Responde SOLO en JSON sin markdown ni bloques de código: ` +
-        `{ "slides": [{ "title": "", "points": [], "keyword": "" }] }`,
+        `\nGenera entre 15 y 20 slides (según la complejidad del tema) y usa layouts variados.\n` +
+        `\nReglas de layout por slide:\n` +
+        `- Slide 1 SIEMPRE debe tener "layout": "title" y puntos introductorios\n` +
+        `- Usa "layout": "two-column" en slides conceptuales de comparación (ej: IA vs ML, ventajas vs desventajas)\n` +
+        `- Usa "layout": "code" en slides con ejemplos de código (Python o pseudocódigo)\n` +
+        `- El resto de slides usa "layout": "list"\n` +
+        `- Si usas "two-column", incluye: leftTitle, rightTitle, left (array), right (array)\n` +
+        `- Si usas "code", incluye: points (máximo 3), code (código real y funcional) y language\n` +
+        `- Si usas "list" o "title", incluye points con máximo 5 elementos\n` +
+        `- Todas las slides deben incluir keyword\n` +
+        `\nResponde SOLO en JSON sin markdown ni bloques de código con esta estructura exacta de ejemplo: ` +
+        `{ "slides": [` +
+        `{ "title": "", "points": [], "keyword": "", "layout": "title" },` +
+        `{ "title": "", "points": [], "keyword": "", "layout": "list" },` +
+        `{ "title": "", "left": [], "right": [], "leftTitle": "", "rightTitle": "", "keyword": "", "layout": "two-column" },` +
+        `{ "title": "", "points": [], "code": "", "language": "python", "keyword": "", "layout": "code" }` +
+        `] }` +
+        `\nAsegúrate de alternar layouts de forma pedagógica según el contenido de cada slide.`,
     exercises: (topic) =>
         `Genera 5 ejercicios prácticos sobre ${topic}. Cada ejercicio con: ` +
         `enunciado, pistas y solución. Responde en español en formato JSON: ` +
