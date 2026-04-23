@@ -142,7 +142,7 @@ function cleanText(text: string) {
         .replace(/`(.*?)`/g, '$1');
 }
 
-function resolveLayout(layout?: Slide['layout']): NonNullable<Slide['layout']> | 'list' {
+function resolveLayout(layout?: Slide['layout']): NonNullable<Slide['layout']> {
     return layout === 'title' || layout === 'list' || layout === 'two-column' || layout === 'code'
         ? layout
         : 'list';
@@ -277,7 +277,12 @@ function SlideContent({
                 {slide.title}
             </h2>
             <div className="mb-10 h-1 w-16 rounded-full" style={{ background: theme.accent }} />
-            <ul className="space-y-2 max-w-2xl max-h-[25rem] overflow-y-auto pr-2">
+            <ul
+                role="list"
+                aria-label="Puntos de la diapositiva"
+                tabIndex={0}
+                className="space-y-2 max-w-2xl max-h-[25rem] overflow-y-auto pr-2 focus:outline-none focus:ring-2 focus:ring-white/30 rounded-lg"
+            >
                 {points.map((point, i) => (
                     <li key={i} className="flex items-start gap-3 bg-black/40 backdrop-blur-sm rounded-lg px-4 py-2">
                         <svg
