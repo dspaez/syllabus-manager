@@ -68,16 +68,15 @@ function adjustColor(
     baseColor: string,
     slideIndex: number,
 ): { from: string; to: string; accent: string } {
-    // Vary darkness slightly per slide (80% to 90% range)
     const basePercent = 80;
-    const variance = (slideIndex % 3) * 3; // 0, 3, 6
+    const variance = (slideIndex % 3) * 3;
     const fromPercent = basePercent + variance;
     const toPercent = 95;
 
     return {
         from: darkenColor(baseColor, fromPercent),
         to: darkenColor(baseColor, toPercent),
-        accent: '#60a5fa', // light blue accent
+        accent: '#60a5fa',
     };
 }
 
@@ -88,14 +87,13 @@ function AnimatedPattern({ patternType }: { patternType: number }) {
     const count = 15;
 
     for (let i = 0; i < count; i++) {
-        const size = 30 + (i % 4) * 20; // 30, 50, 70, 90
+        const size = 30 + (i % 4) * 20;
         const left = (i * 7) % 100;
         const top = (i * 13) % 100;
         const delay = (i * 0.5) % 3;
         const duration = 4 + (i % 3);
 
         if (patternType % 2 === 0) {
-            // Hexagons
             shapes.push(
                 <div
                     key={i}
@@ -120,7 +118,6 @@ function AnimatedPattern({ patternType }: { patternType: number }) {
                 </div>,
             );
         } else {
-            // Circles
             shapes.push(
                 <div
                     key={i}
@@ -323,18 +320,9 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
     const router = useRouter();
     const [current, setCurrent] = useState(0);
     const [anim, setAnim] = useState<AnimState>('in');
-    const [isFullscreen, setIsFullscreen] = useState(() => {
-        if (typeof document === 'undefined') return false;
-        const doc = document as FullscreenDocument;
-        return Boolean(document.fullscreenElement || doc.webkitFullscreenElement);
-    });
-    const fullscreenEnabled =
-        typeof document !== 'undefined'
-            ? Boolean(
-                  document.fullscreenEnabled ||
-                      (document as FullscreenDocument).webkitFullscreenEnabled,
-              )
-            : false;
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    // ✅ Fix hydration: initialize as false on server, set real value on client via useEffect
+    const [fullscreenEnabled, setFullscreenEnabled] = useState(false);
 
     function navigate(newIndex: number, dir: 'next' | 'prev') {
         if (anim !== 'in') return;
@@ -433,7 +421,6 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
 </div>`;
             }
 
-            // default: list
             return `<div>
   <div style="font-size:0.75rem; letter-spacing:0.2em; color: ${accent}; margin-bottom:1rem; text-transform:uppercase;">${index + 1} / ${total}</div>
   <h2 style="font-size:2.5rem; font-weight:900; border-left:4px solid ${accent}; padding-left:1rem; margin:0 0 0.5rem; color:white;">${title}</h2>
@@ -483,18 +470,24 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
         document.head.appendChild(style);
         document.body.appendChild(printContainer);
 
-        // Use afterprint event to clean up once the print dialog closes
         const cleanup = () => {
             style.parentNode?.removeChild(style);
             printContainer.parentNode?.removeChild(printContainer);
         };
         window.addEventListener('afterprint', cleanup, { once: true });
 
-        // Small delay to allow the DOM to update before opening the print dialog
         setTimeout(() => {
             window.print();
         }, 100);
     }, [slides, subjectColor]);
+
+    // ✅ Fix hydration: check fullscreen support only on the client
+    useEffect(() => {
+        const doc = document as FullscreenDocument;
+        setFullscreenEnabled(
+            Boolean(document.fullscreenEnabled || doc.webkitFullscreenEnabled)
+        );
+    }, []);
 
     useEffect(() => {
         const doc = document as FullscreenDocument;
