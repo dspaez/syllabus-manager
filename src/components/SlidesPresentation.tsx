@@ -152,6 +152,15 @@ function cleanText(text: string) {
         .replace(/`(.*?)`/g, '$1');
 }
 
+function escapeHTML(str: string): string {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function resolveLayout(layout?: Slide['layout']): NonNullable<Slide['layout']> {
     return layout === 'title' || layout === 'list' || layout === 'two-column' || layout === 'code'
         ? layout
@@ -368,6 +377,125 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
         }
     }, []);
 
+    const exportToPDF = useCallback(() => {
+        function buildSlideHTML(slide: Slide, layout: NonNullable<Slide['layout']>, theme: { accent: string }, index: number, total: number): string {
+            const points = (slide.points ?? []).map(p => escapeHTML(cleanText(p)));
+            const leftItems = (slide.left ?? []).map(p => escapeHTML(cleanText(p)));
+            const rightItems = (slide.right ?? []).map(p => escapeHTML(cleanText(p)));
+            const title = escapeHTML(slide.title);
+            const leftTitle = escapeHTML(slide.leftTitle || 'Columna A');
+            const rightTitle = escapeHTML(slide.rightTitle || 'Columna B');
+            const language = escapeHTML(slide.language || 'code');
+            const accent = escapeHTML(theme.accent);
+
+            if (layout === 'title') {
+                return `<div style="text-align:center; padding: 2rem 0;">
+  <div style="font-size:0.75rem; letter-spacing:0.2em; color: ${accent}; margin-bottom:1.5rem; text-transform:uppercase;">${index + 1} / ${total}</div>
+  <h1 style="font-size:3.5rem; font-weight:900; margin:0 0 1.5rem; line-height:1.1; color:white;">${title}</h1>
+  <ul style="list-style:none;padding:0;margin:0 auto;max-width:600px;">
+    ${points.map(p => `<li style="color:rgba(255,255,255,0.7);font-size:1.1rem;margin-bottom:0.5rem;">${p}</li>`).join('')}
+  </ul>
+</div>`;
+            }
+
+            if (layout === 'two-column') {
+                return `<div>
+  <div style="font-size:0.75rem; letter-spacing:0.2em; color: ${accent}; margin-bottom:1rem; text-transform:uppercase;">${index + 1} / ${total}</div>
+  <h2 style="font-size:2.5rem; font-weight:900; border-left:4px solid ${accent}; padding-left:1rem; margin:0 0 0.5rem; color:white;">${title}</h2>
+  <div style="height:3px;width:3rem;background:${accent};border-radius:9999px;margin-bottom:1.5rem;"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+    <div style="background:rgba(0,0,0,0.3);border-radius:0.75rem;padding:1rem;">
+      <h3 style="color:${accent};font-weight:700;margin:0 0 0.75rem;">${leftTitle}</h3>
+      <ul style="list-style:disc;padding-left:1.25rem;margin:0;color:white;">
+        ${leftItems.map(item => `<li style="margin-bottom:0.4rem;font-size:0.95rem;">${item}</li>`).join('')}
+      </ul>
+    </div>
+    <div style="background:rgba(0,0,0,0.3);border-radius:0.75rem;padding:1rem;border-left:1px solid rgba(255,255,255,0.1);">
+      <h3 style="color:${accent};font-weight:700;margin:0 0 0.75rem;">${rightTitle}</h3>
+      <ul style="list-style:disc;padding-left:1.25rem;margin:0;color:white;">
+        ${rightItems.map(item => `<li style="margin-bottom:0.4rem;font-size:0.95rem;">${item}</li>`).join('')}
+      </ul>
+    </div>
+  </div>
+</div>`;
+            }
+
+            if (layout === 'code') {
+                return `<div>
+  <div style="font-size:0.75rem; letter-spacing:0.2em; color: ${accent}; margin-bottom:1rem; text-transform:uppercase;">${index + 1} / ${total}</div>
+  <h2 style="font-size:2.5rem; font-weight:900; border-left:4px solid ${accent}; padding-left:1rem; margin:0 0 0.5rem; color:white;">${title}</h2>
+  <div style="height:3px;width:3rem;background:${accent};border-radius:9999px;margin-bottom:1rem;"></div>
+  ${points.slice(0, 3).map(p => `<div style="background:rgba(0,0,0,0.3);border-radius:0.5rem;padding:0.4rem 1rem;margin-bottom:0.3rem;font-size:0.9rem;color:white;">${p}</div>`).join('')}
+  <div style="background:rgba(0,0,0,0.6);border-radius:0.75rem;padding:1rem;margin-top:0.75rem;border:1px solid rgba(255,255,255,0.1);position:relative;">
+    <span style="position:absolute;top:0.5rem;right:0.75rem;font-size:0.7rem;color:${accent};text-transform:uppercase;letter-spacing:0.1em;">${language}</span>
+    <pre style="font-family:monospace;font-size:0.8rem;color:#86efac;margin:0;white-space:pre-wrap;word-break:break-word;">${escapeHTML(slide.code || '// Código no disponible')}</pre>
+  </div>
+</div>`;
+            }
+
+            // default: list
+            return `<div>
+  <div style="font-size:0.75rem; letter-spacing:0.2em; color: ${accent}; margin-bottom:1rem; text-transform:uppercase;">${index + 1} / ${total}</div>
+  <h2 style="font-size:2.5rem; font-weight:900; border-left:4px solid ${accent}; padding-left:1rem; margin:0 0 0.5rem; color:white;">${title}</h2>
+  <div style="height:3px;width:3rem;background:${accent};border-radius:9999px;margin-bottom:1.5rem;"></div>
+  <ul style="list-style:none;padding:0;margin:0;">
+    ${points.map(p => `<li style="display:flex;gap:0.75rem;background:rgba(0,0,0,0.3);border-radius:0.5rem;padding:0.5rem 1rem;margin-bottom:0.4rem;font-size:1rem;line-height:1.5;color:white;">
+      <span style="color:${accent};margin-top:2px;">✓</span>
+      <span>${p}</span>
+    </li>`).join('')}
+  </ul>
+</div>`;
+        }
+
+        const printContainer = document.createElement('div');
+        printContainer.id = 'slides-print-container';
+        printContainer.style.cssText = 'position:fixed;top:0;left:0;width:100%;z-index:99999;display:none;';
+
+        slides.forEach((slide, index) => {
+            const layout = resolveLayout(slide.layout);
+            const theme = adjustColor(subjectColor, index);
+            const bgColor = layout === 'title'
+                ? darkenColor(subjectColor, 55)
+                : darkenColor(subjectColor, 80 + (index % 3) * 3);
+            const bgColorTo = layout === 'title'
+                ? darkenColor(subjectColor, 82)
+                : darkenColor(subjectColor, 95);
+
+            const page = document.createElement('div');
+            page.className = 'slide-print-page';
+            page.style.cssText = `background: linear-gradient(135deg, ${bgColor} 0%, ${bgColorTo} 100%); color: white;`;
+            page.innerHTML = buildSlideHTML(slide, layout, theme, index, slides.length);
+            printContainer.appendChild(page);
+        });
+
+        const style = document.createElement('style');
+        style.id = 'slides-print-styles';
+        style.textContent = `
+            @media print {
+                body * { visibility: hidden !important; }
+                #slides-print-container, #slides-print-container * { visibility: visible !important; }
+                #slides-print-container { display: block !important; position: absolute; top: 0; left: 0; width: 100%; }
+                .slide-print-page { page-break-after: always; break-after: page; min-height: 100vh; width: 100%; display: flex; flex-direction: column; justify-content: center; padding: 3rem; box-sizing: border-box; }
+                .slide-print-page:last-child { page-break-after: avoid; break-after: avoid; }
+            }
+        `;
+
+        document.head.appendChild(style);
+        document.body.appendChild(printContainer);
+
+        // Use afterprint event to clean up once the print dialog closes
+        const cleanup = () => {
+            style.parentNode?.removeChild(style);
+            printContainer.parentNode?.removeChild(printContainer);
+        };
+        window.addEventListener('afterprint', cleanup, { once: true });
+
+        // Small delay to allow the DOM to update before opening the print dialog
+        setTimeout(() => {
+            window.print();
+        }, 100);
+    }, [slides, subjectColor]);
+
     useEffect(() => {
         const doc = document as FullscreenDocument;
         const syncFullscreenState = () =>
@@ -472,6 +600,16 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
                                 </svg>
                             </button>
                         )}
+                        <button
+                            onClick={exportToPDF}
+                            className="text-white/40 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
+                            aria-label="Exportar presentación como PDF"
+                            title="Exportar como PDF"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                        </button>
                         <button
                             onClick={() => router.back()}
                             className="text-white/40 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
