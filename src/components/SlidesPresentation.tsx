@@ -351,23 +351,27 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
         const root = document.documentElement as FullscreenElement;
         const activeElement = document.fullscreenElement || doc.webkitFullscreenElement;
 
-        if (activeElement) {
-            if (document.exitFullscreen) {
-                await document.exitFullscreen();
+        try {
+            if (activeElement) {
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                    return;
+                }
+                if (doc.webkitExitFullscreen) {
+                    await doc.webkitExitFullscreen();
+                }
                 return;
             }
-            if (doc.webkitExitFullscreen) {
-                await doc.webkitExitFullscreen();
-            }
-            return;
-        }
 
-        if (root.requestFullscreen) {
-            await root.requestFullscreen();
+            if (root.requestFullscreen) {
+                await root.requestFullscreen();
+                return;
+            }
+            if (root.webkitRequestFullscreen) {
+                await root.webkitRequestFullscreen();
+            }
+        } catch {
             return;
-        }
-        if (root.webkitRequestFullscreen) {
-            await root.webkitRequestFullscreen();
         }
     }, []);
 
@@ -389,7 +393,14 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
         function handleKey(e: KeyboardEvent) {
             if (e.key === 'ArrowLeft') prev();
             if (e.key === 'ArrowRight') next();
-            if (e.key.toLowerCase() === 'f') void toggleFullscreen();
+            const target = e.target as HTMLElement | null;
+            const isTypingTarget =
+                target &&
+                (target.tagName === 'INPUT' ||
+                    target.tagName === 'TEXTAREA' ||
+                    target.isContentEditable);
+
+            if (!isTypingTarget && e.key.toLowerCase() === 'f') void toggleFullscreen();
         }
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
