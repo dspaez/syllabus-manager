@@ -95,35 +95,38 @@ export default function PublicHomePage() {
     );
 
     return (
-        <div className="min-h-screen flex flex-col">
+        <div className="flex flex-col">
             {/* ── Hero ──────────────────────────────────────────────────────── */}
             <section
                 className="relative overflow-hidden px-6 py-20 sm:py-28"
-                style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #7c3aed 100%)' }}
+                style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e40af 50%, #7c3aed 100%)' }}
             >
                 {/* Decorative blobs */}
                 <div className="pointer-events-none absolute inset-0 overflow-hidden">
                     <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-white/5" />
                     <div className="absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-white/5" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-white/3" />
                 </div>
 
                 <div className="relative mx-auto max-w-3xl text-center">
-                    {/* Icon */}
-                    <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-white/15 text-4xl backdrop-blur-sm">
-                        🎓
+                    {/* Badge */}
+                    <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-sm px-4 py-1.5 text-xs font-semibold text-white/90">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        Semestre activo: {loading ? '…' : (stats.semester || 'Sem. Actual')}
                     </div>
 
                     {/* Title */}
-                    <h1 className="mb-4 text-4xl font-extrabold leading-tight text-white sm:text-5xl">
-                        Hub de Contenidos Educativos
+                    <h1 className="mb-4 text-5xl sm:text-6xl font-black leading-tight text-white">
+                        Hub de Contenidos<br />
+                        <span className="text-blue-300">Educativos</span>
                     </h1>
 
                     {/* Subtitle */}
-                    <p className="mx-auto mb-8 max-w-xl text-lg text-white/70">
+                    <p className="mx-auto mb-10 max-w-xl text-lg text-white/70">
                         Accede a guías, ejercicios y presentaciones generadas para cada asignatura de tu programa académico.
                     </p>
 
-                    {/* Search bar */}
+                    {/* Search bar — glass morphism */}
                     <div className="relative mx-auto mb-10 max-w-md">
                         <svg
                             xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
@@ -136,38 +139,38 @@ export default function PublicHomePage() {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Buscar asignaturas..."
-                            className="w-full rounded-2xl bg-white py-3.5 pl-11 pr-4 text-sm text-gray-900 shadow-lg placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
+                            className="w-full rounded-2xl bg-white/90 backdrop-blur-sm py-3.5 pl-11 pr-4 text-sm text-gray-900 shadow-xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
                         />
                     </div>
 
                     {/* Stats */}
-                    <div className="mb-10 flex flex-wrap justify-center gap-3">
+                    <div className="flex flex-wrap justify-center gap-4">
                         {[
-                            { label: 'Asignaturas', value: loading ? '…' : stats.subjects },
-                            { label: 'Materiales', value: loading ? '…' : stats.materials },
-                            { label: 'Semestre activo', value: loading ? '…' : stats.semester },
-                        ].map(({ label, value }) => (
-                            <div key={label} className="min-w-36 rounded-2xl bg-white/10 px-6 py-4 backdrop-blur-sm">
-                                <p className="text-2xl font-bold text-white">{value}</p>
-                                <p className="mt-0.5 text-xs text-white/60">{label}</p>
+                            {
+                                label: 'Asignaturas', value: loading ? '…' : stats.subjects,
+                                icon: (
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-5 text-blue-300">
+                                        <path d="M10.75 16.82A7.462 7.462 0 0 1 15 15.5c.71 0 1.396.098 2.046.282A.75.75 0 0 0 18 15.06v-11a.75.75 0 0 0-.546-.721A9.006 9.006 0 0 0 15 3a8.963 8.963 0 0 0-4.25 1.065V16.82ZM9.25 4.065A8.963 8.963 0 0 0 5 3c-.85 0-1.673.118-2.454.339A.75.75 0 0 0 2 4.06v11a.75.75 0 0 0 .954.721A7.506 7.506 0 0 1 5 15.5c1.579 0 3.042.487 4.25 1.32V4.065Z" />
+                                    </svg>
+                                ),
+                            },
+                            {
+                                label: 'Materiales', value: loading ? '…' : stats.materials,
+                                icon: (
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-5 text-violet-300">
+                                        <path fillRule="evenodd" d="M15.621 4.379a3 3 0 0 0-4.242 0l-7 7a3 3 0 0 0 4.241 4.243h.001l.497-.5a.75.75 0 0 1 1.064 1.057l-.498.501-.002.002a4.5 4.5 0 0 1-6.364-6.364l7-7a4.5 4.5 0 0 1 6.368 6.36l-3.455 3.553A2.625 2.625 0 1 1 9.52 9.52l3.45-3.451a.75.75 0 1 1 1.061 1.06l-3.45 3.451a1.125 1.125 0 0 0 1.587 1.595l3.454-3.553a3 3 0 0 0 0-4.243Z" clipRule="evenodd" />
+                                    </svg>
+                                ),
+                            },
+                        ].map(({ label, value, icon }) => (
+                            <div key={label} className="flex items-center gap-3 min-w-36 rounded-2xl bg-white/10 px-5 py-4 backdrop-blur-sm">
+                                {icon}
+                                <div>
+                                    <p className="text-2xl font-bold text-white leading-none">{value}</p>
+                                    <p className="mt-0.5 text-xs text-white/60">{label}</p>
+                                </div>
                             </div>
                         ))}
-                    </div>
-
-                    {/* CTA buttons */}
-                    <div className="flex flex-wrap justify-center gap-3">
-                        <a
-                            href="#subjects"
-                            className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-blue-700 shadow-lg transition-colors hover:bg-blue-50"
-                        >
-                            Ver Asignaturas
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="size-4">
-                                <path fillRule="evenodd" d="M8 2a.75.75 0 0 1 .75.75v8.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 0 1-1.06 0l-4.5-4.5a.75.75 0 0 1 1.06-1.06L7.25 11.44V2.75A.75.75 0 0 1 8 2Z" clipRule="evenodd" />
-                            </svg>
-                        </a>
-                        <div className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/15 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm">
-                            📅 {loading ? '…' : (stats.semester || 'Semestre Actual')}
-                        </div>
                     </div>
                 </div>
             </section>
@@ -187,7 +190,13 @@ export default function PublicHomePage() {
                 {loading && (
                     <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                         {[...Array(6)].map((_, i) => (
-                            <li key={i} className="h-64 animate-pulse rounded-2xl bg-gray-100" />
+                            <li key={i} className="overflow-hidden rounded-2xl bg-gray-100 animate-pulse">
+                                <div className="h-40 bg-gray-200" />
+                                <div className="p-5 space-y-2">
+                                    <div className="h-3 bg-gray-200 rounded w-3/4" />
+                                    <div className="h-3 bg-gray-100 rounded w-1/2" />
+                                </div>
+                            </li>
                         ))}
                     </ul>
                 )}
@@ -221,20 +230,32 @@ export default function PublicHomePage() {
                                 <li key={subject.id}>
                                     <Link
                                         href={`/subjects/${subject.id}`}
-                                        className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl"
+                                        className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
                                     >
-                                        {/* Gradient cover */}
+                                        {/* Gradient cover — h-40 */}
                                         <div
-                                            className="flex h-36 flex-col items-center justify-center px-6 py-5"
+                                            className="relative h-40 overflow-hidden flex flex-col items-center justify-center px-6 py-5"
                                             style={{ background: `linear-gradient(135deg, ${color}ee 0%, ${color}99 100%)` }}
                                         >
-                                            <span className="mb-2 text-4xl drop-shadow">{emoji}</span>
-                                            <h3 className="text-center text-base font-bold leading-snug text-white drop-shadow">
+                                            {/* Dot pattern overlay */}
+                                            <div
+                                                className="pointer-events-none absolute inset-0 opacity-20"
+                                                style={{
+                                                    backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.6) 1px, transparent 1px)',
+                                                    backgroundSize: '16px 16px',
+                                                }}
+                                            />
+                                            {/* Semester badge — top right */}
+                                            {subject.semesters?.name && (
+                                                <span className="absolute top-3 right-3 text-xs font-semibold text-white/80 bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                                                    {subject.semesters.name}
+                                                </span>
+                                            )}
+                                            {/* Emoji + name */}
+                                            <span className="mb-2 text-5xl drop-shadow-lg relative z-10">{emoji}</span>
+                                            <h3 className="relative z-10 text-center text-base font-bold leading-snug text-white drop-shadow">
                                                 {subject.name}
                                             </h3>
-                                            {subject.semesters?.name && (
-                                                <p className="mt-1 text-xs text-white/60">{subject.semesters.name}</p>
-                                            )}
                                         </div>
 
                                         {/* White body */}
@@ -248,16 +269,20 @@ export default function PublicHomePage() {
                                             {tags.length > 0 && (
                                                 <div className="mt-3 flex flex-wrap gap-1.5">
                                                     {tags.map((tag) => (
-                                                        <span key={tag} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                                                        <span
+                                                            key={tag}
+                                                            className="rounded-full px-2.5 py-0.5 text-xs font-medium"
+                                                            style={{ backgroundColor: `${color}18`, color }}
+                                                        >
                                                             {tag}
                                                         </span>
                                                     ))}
                                                 </div>
                                             )}
 
-                                            <div className="mt-4">
-                                                <span className="inline-flex items-center gap-1 text-sm font-semibold" style={{ color }}>
-                                                    Ver Contenidos →
+                                            <div className="mt-4 flex items-center gap-1">
+                                                <span className="text-sm font-semibold transition-all duration-200 group-hover:gap-2" style={{ color }}>
+                                                    Ver contenidos →
                                                 </span>
                                             </div>
                                         </div>
@@ -268,11 +293,6 @@ export default function PublicHomePage() {
                     </ul>
                 )}
             </section>
-
-            {/* ── Footer ────────────────────────────────────────────────────── */}
-            <footer className="border-t border-gray-100 py-6 text-center text-sm text-gray-400">
-                © 2026 Gestor Académico
-            </footer>
         </div>
     );
 }

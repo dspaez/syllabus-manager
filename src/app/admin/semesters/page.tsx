@@ -38,7 +38,7 @@ export default async function SemestersPage() {
                 </div>
                 <Link
                     href="/admin/semesters/new"
-                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition-colors"
+                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-colors"
                 >
                     <span className="text-base leading-none">＋</span>
                     Nuevo semestre
@@ -47,7 +47,7 @@ export default async function SemestersPage() {
 
             {/* Error */}
             {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-6">
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-6">
                     No se pudieron cargar los semestres: {error.message}
                 </div>
             )}
@@ -81,7 +81,10 @@ export default async function SemestersPage() {
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {(semesters as Semester[]).map((semester) => (
-                                <tr key={semester.id} className="hover:bg-slate-50 transition-colors">
+                                <tr
+                                    key={semester.id}
+                                    className={`hover:bg-blue-50/50 transition-colors ${semester.is_active ? 'border-l-2 border-emerald-500' : ''}`}
+                                >
                                     <td className="px-6 py-4 font-semibold text-gray-800">
                                         {semester.name}
                                     </td>
@@ -93,7 +96,7 @@ export default async function SemestersPage() {
                                             ? 'bg-emerald-100 text-emerald-700'
                                             : 'bg-gray-100 text-gray-500'
                                             }`}>
-                                            <span className={`h-1.5 w-1.5 rounded-full ${semester.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                                            <span className={`h-1.5 w-1.5 rounded-full ${semester.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
                                             {semester.is_active ? 'Activo' : 'Inactivo'}
                                         </span>
                                     </td>
@@ -103,7 +106,12 @@ export default async function SemestersPage() {
                                                 href={`/admin/semesters/${semester.id}/edit`}
                                                 className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
                                             >
-                                                ✏️ Editar
+                                                {/* Pencil SVG */}
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-3.5">
+                                                    <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
+                                                    <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
+                                                </svg>
+                                                Editar
                                             </Link>
                                             <DeleteRowButton
                                                 table="semesters"
