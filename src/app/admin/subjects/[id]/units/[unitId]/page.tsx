@@ -13,6 +13,7 @@ type Material = {
     id: string;
     name: string;
     type: string | null;
+    source: string | null;
     file_url: string | null;
     is_published: boolean;
 };
@@ -170,6 +171,16 @@ export default async function UnitPage({
 
                                             {/* Actions */}
                                             <div className="shrink-0 flex items-center gap-2">
+                                                {material.source === 'ai' && (
+                                                    <Link
+                                                        href={`/materials/${material.id}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs font-medium text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-lg transition-colors"
+                                                    >
+                                                        👁 Vista previa
+                                                    </Link>
+                                                )}
                                                 <TogglePublish materialId={material.id} isPublished={material.is_published} />
                                                 <DeleteMaterial materialId={material.id} fileUrl={material.file_url} />
                                             </div>

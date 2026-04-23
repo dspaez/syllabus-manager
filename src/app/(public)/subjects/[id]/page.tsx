@@ -65,7 +65,7 @@ const TYPE_BADGES: Record<string, { label: string; classes: string }> = {
   pdf: { label: 'PDF', classes: 'bg-red-50 text-red-600 border-red-200' },
   pptx: { label: 'PPTX', classes: 'bg-orange-50 text-orange-600 border-orange-200' },
   doc: { label: 'DOC', classes: 'bg-blue-50 text-blue-600 border-blue-200' },
-  ai: { label: 'IA', classes: 'bg-violet-50 text-violet-600 border-violet-200' },
+  ai: { label: 'Presentación', classes: 'bg-violet-50 text-violet-600 border-violet-200' },
 };
 
 function TypeBadge({ type }: { type: string | null }) {

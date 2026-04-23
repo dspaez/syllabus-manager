@@ -104,13 +104,13 @@ export default function GenerateAllContent({ unitId, subjectId }: GenerateAllCon
 
         if (contentType === 'slides') {
           materialName = `Presentación: ${week.title}`;
-          materialType = 'slides';
+          materialType = 'pptx';
         } else if (contentType === 'exercises') {
           materialName = `Ejercicios: ${week.title}`;
-          materialType = 'exercises';
+          materialType = 'doc';
         } else if (contentType === 'guide') {
           materialName = `Guía: ${week.title}`;
-          materialType = 'guide';
+          materialType = 'doc';
         }
 
         // Insertar en materials
@@ -118,7 +118,7 @@ export default function GenerateAllContent({ unitId, subjectId }: GenerateAllCon
           week_id: week.id,
           name: materialName,
           type: materialType,
-          content,
+          description: JSON.stringify(content),
           source: 'ai',
           is_published: false,
         });

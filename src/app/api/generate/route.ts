@@ -3,20 +3,22 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const PROMPTS: Record<string, (topic: string) => string> = {
     slides: (topic) =>
-        `Eres un experto docente universitario. Genera una presentación COMPLETA y DETALLADA sobre ${topic}. ` +
-        `La presentación debe tener entre 15 y 20 slides según la complejidad del tema. ` +
-        `Cada slide debe tener: ` +
-        `- Título claro y específico ` +
-        `- Entre 4 y 6 puntos detallados (no solo títulos, sino explicaciones completas) ` +
-        `- Una keyword en inglés para imagen de fondo ` +
-        `La presentación debe seguir esta estructura: ` +
-        `1. Slide de título/introducción ` +
-        `2. Objetivos de aprendizaje ` +
-        `3-16. Contenido detallado progresivo (de básico a avanzado) ` +
-        `17. Resumen/conclusiones ` +
-        `18. Ejercicio práctico o caso de estudio ` +
-        `Incluye ejemplos concretos, definiciones precisas y aplicaciones prácticas. ` +
-        `Responde en español en formato JSON: ` +
+        `Eres un docente universitario experto. Genera una presentación académica COMPLETA sobre ${topic} para estudiantes universitarios de tecnología. ` +
+        `\n\nREGLAS IMPORTANTES:\n` +
+        `- NO uses markdown (**negrita**, *itálica*) en ningún punto\n` +
+        `- Cada punto debe ser una explicación completa de 1-2 líneas\n` +
+        `- Incluye conceptos técnicos precisos con terminología correcta\n` +
+        `- Agrega ejemplos concretos y casos de uso reales\n` +
+        `- El contenido debe ser de nivel universitario, no básico\n` +
+        `\nGenera entre 12 y 15 slides con esta estructura:\n` +
+        `1. Introducción y contexto del tema\n` +
+        `2. Objetivos de aprendizaje (qué sabrá el estudiante al finalizar)\n` +
+        `3-12. Contenido técnico progresivo con ejemplos y aplicaciones\n` +
+        `13. Caso práctico o ejercicio aplicado\n` +
+        `14. Resumen y conclusiones\n` +
+        `15. Referencias y recursos adicionales\n` +
+        `\nCada slide: máximo 5 puntos, cada punto máximo 2 líneas, sin markdown, con terminología técnica precisa. ` +
+        `Responde SOLO en JSON sin markdown ni bloques de código: ` +
         `{ "slides": [{ "title": "", "points": [], "keyword": "" }] }`,
     exercises: (topic) =>
         `Genera 5 ejercicios prácticos sobre ${topic}. Cada ejercicio con: ` +
@@ -46,6 +48,7 @@ export async function POST(request: NextRequest) {
         if (type === 'curriculum') {
             const model = genAI.getGenerativeModel({
                 model: 'gemini-2.5-flash',
+                generationConfig: { maxOutputTokens: 8192 },
                 // @ts-expect-error — googleSearch is valid at runtime but missing from SDK types
                 tools: [{ googleSearch: {} }],
             });
@@ -65,8 +68,25 @@ export async function POST(request: NextRequest) {
                 `{ "summary": "máximo 3 líneas sobre tendencias actuales", "units": [{ "name": "nombre de la unidad", "order": 1, "weeks": [{ "number": 1, "title": "título conciso", "topics": ["tema1", "tema2"], "depth": "descripción de qué tan profundo ir según las horas", "justification": "máximo 1 línea" }] }] }`;
             const result = await model.generateContent(prompt);
             const text = result.response.text();
-            const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? [null, text];
-            const parsed = JSON.parse(jsonMatch[1].trim());
+            
+            // Si el JSON está truncado, intentar repararlo
+            let jsonStr = text.trim();
+            // Remover markdown si existe
+            jsonStr = jsonStr.replace(/```json|```/g, '').trim();
+            // Intentar parsear, si falla intentar reparar
+            let parsed;
+            try {
+                parsed = JSON.parse(jsonStr);
+            } catch {
+                // Truncar en el último objeto completo
+                const lastValidIndex = jsonStr.lastIndexOf('}]');
+                if (lastValidIndex > 0) {
+                    jsonStr = jsonStr.substring(0, lastValidIndex + 2) + '}';
+                    parsed = JSON.parse(jsonStr);
+                } else {
+                    throw new Error('JSON inválido');
+                }
+            }
             return NextResponse.json(parsed);
         }
 
@@ -75,13 +95,32 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: `Invalid type. Must be one of: curriculum, ${Object.keys(PROMPTS).join(', ')}` }, { status: 400 });
         }
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = genAI.getGenerativeModel({ 
+            model: 'gemini-2.5-flash',
+            generationConfig: { maxOutputTokens: 8192 }
+        });
 
         const result = await model.generateContent(promptFn(topic));
         const text = result.response.text();
 
-        const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) ?? [null, text];
-        const parsed = JSON.parse(jsonMatch[1].trim());
+        // Si el JSON está truncado, intentar repararlo
+        let jsonStr = text.trim();
+        // Remover markdown si existe
+        jsonStr = jsonStr.replace(/```json|```/g, '').trim();
+        // Intentar parsear, si falla intentar reparar
+        let parsed;
+        try {
+            parsed = JSON.parse(jsonStr);
+        } catch {
+            // Truncar en el último objeto completo
+            const lastValidIndex = jsonStr.lastIndexOf('}]');
+            if (lastValidIndex > 0) {
+                jsonStr = jsonStr.substring(0, lastValidIndex + 2) + '}';
+                parsed = JSON.parse(jsonStr);
+            } else {
+                throw new Error('JSON inválido');
+            }
+        }
 
         return NextResponse.json(parsed);
     } catch (error) {
