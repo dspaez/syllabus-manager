@@ -281,7 +281,7 @@ function SlideContent({
                 role="list"
                 aria-label="Puntos de la diapositiva"
                 tabIndex={0}
-                className="space-y-2 max-w-2xl max-h-[25rem] overflow-y-auto pr-2 focus:outline-none focus:ring-2 focus:ring-white/30 rounded-lg"
+                className="space-y-2 max-w-2xl pr-2 focus:outline-none focus:ring-2 focus:ring-white/30 rounded-lg"
             >
                 {points.map((point, i) => (
                     <li key={i} className="flex items-start gap-3 bg-black/40 backdrop-blur-sm rounded-lg px-4 py-2">
