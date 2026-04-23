@@ -253,7 +253,7 @@ export default function PublicHomePage() {
                                             )}
                                             {/* Emoji + name */}
                                             <span className="mb-2 text-5xl drop-shadow-lg relative z-10">{emoji}</span>
-                                            <h3 className="relative z-10 text-center text-base font-bold leading-snug text-white drop-shadow text-shadow">
+                                            <h3 className="relative z-10 text-center text-base font-bold leading-snug text-white drop-shadow">
                                                 {subject.name}
                                             </h3>
                                         </div>
