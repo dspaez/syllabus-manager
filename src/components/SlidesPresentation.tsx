@@ -142,14 +142,16 @@ function AnimatedPattern({ patternType }: { patternType: number }) {
     return <div className="absolute inset-0 overflow-hidden pointer-events-none">{shapes}</div>;
 }
 
-function cleanText(text: string) {
+function cleanText(text: string | undefined | null): string {
+    if (!text) return "";
     return text
         .replace(/\*\*(.*?)\*\*/g, '$1')
         .replace(/\*(.*?)\*/g, '$1')
         .replace(/`(.*?)`/g, '$1');
 }
 
-function escapeHTML(str: string): string {
+function escapeHTML(str: string | undefined | null): string {
+    if (!str) return "";
     return str
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -395,13 +397,13 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
             const points = (slide.points ?? []).map(p => escapeHTML(cleanText(p)));
             const leftItems = (slide.left ?? []).map(p => escapeHTML(cleanText(p)));
             const rightItems = (slide.right ?? []).map(p => escapeHTML(cleanText(p)));
-            const title = escapeHTML(slide.title);
+            const title = escapeHTML(slide.title || '');
             const leftTitle = escapeHTML(slide.leftTitle || 'Columna A');
             const rightTitle = escapeHTML(slide.rightTitle || 'Columna B');
             const language = escapeHTML(slide.language || 'code');
-            const accent = escapeHTML(theme.accent);
+            const accent = escapeHTML(theme?.accent || '#3b82f6');
             const progress = ((index + 1) / total) * 100;
-            const escapedName = escapeHTML(name);
+            const escapedName = escapeHTML(name || '');
 
             const bgPattern = buildBackgroundPattern(index);
 
