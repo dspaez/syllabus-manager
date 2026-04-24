@@ -11,7 +11,7 @@ const PROMPTS: Record<string, (topic: string) => string> = {
         `- Incluye conceptos técnicos precisos con terminología correcta\n` +
         `- Agrega ejemplos concretos y casos de uso reales\n` +
         `- El contenido debe ser de nivel universitario, no básico\n` +
-        `\nGenera entre 15 y 20 slides (según la complejidad del tema) y usa layouts variados.\n` +
+        `\nGenera entre 10 y 12 slides (según la complejidad del tema) y usa layouts variados.\n` +
         `\nReglas de layout por slide:\n` +
         `- Slide 1 SIEMPRE debe tener "layout": "title" y puntos introductorios\n` +
         `- Usa "layout": "two-column" en slides conceptuales de comparación (ej: IA vs ML, ventajas vs desventajas)\n` +
@@ -38,6 +38,66 @@ const PROMPTS: Record<string, (topic: string) => string> = {
         `conceptos clave, ejemplos y resumen. Responde en español en formato JSON: ` +
         `{ "introduction": "", "concepts": [{ "name": "", "explanation": "" }], "examples": [], "summary": "" }`,
 };
+
+const SLIDES_MAX_TOKENS = 16384;
+const DEFAULT_MAX_TOKENS = 8192;
+
+function repairJSON(str: string): unknown {
+    // Strategy 1: find last `}]` and close the outer object
+    const idx1 = str.lastIndexOf('}]');
+    if (idx1 > 0) {
+        try {
+            return JSON.parse(str.substring(0, idx1 + 2) + '}');
+        } catch {
+            // fall through to next strategy
+        }
+    }
+
+    // Strategy 2: find last `}` and try appending `]}` or nothing
+    const idx2 = str.lastIndexOf('}');
+    if (idx2 > 0) {
+        try {
+            return JSON.parse(str.substring(0, idx2 + 1) + ']}');
+        } catch {
+            // ignore
+        }
+        try {
+            return JSON.parse(str.substring(0, idx2 + 1));
+        } catch {
+            // fall through to next strategy
+        }
+    }
+
+    // Strategy 3: walk the string extracting complete top-level slide objects by brace depth
+    // and rebuild {"slides":[...]} manually
+    const slidesStart = str.indexOf('"slides"');
+    if (slidesStart !== -1) {
+        const arrayStart = str.indexOf('[', slidesStart);
+        if (arrayStart !== -1) {
+            const objects: string[] = [];
+            let depth = 0;
+            let objStart = -1;
+            for (let i = arrayStart + 1; i < str.length; i++) {
+                const ch = str[i];
+                if (ch === '{') {
+                    if (depth === 0) objStart = i;
+                    depth++;
+                } else if (ch === '}') {
+                    depth--;
+                    if (depth === 0 && objStart !== -1) {
+                        objects.push(str.substring(objStart, i + 1));
+                        objStart = -1;
+                    }
+                }
+            }
+            if (objects.length > 0) {
+                return JSON.parse(`{"slides":[${objects.join(',')}]}`);
+            }
+        }
+    }
+
+    throw new Error('Unable to repair malformed JSON response after attempting all recovery strategies');
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -87,14 +147,7 @@ export async function POST(request: NextRequest) {
             try {
                 parsed = JSON.parse(jsonStr);
             } catch {
-                // Truncar en el último objeto completo
-                const lastValidIndex = jsonStr.lastIndexOf('}]');
-                if (lastValidIndex > 0) {
-                    jsonStr = jsonStr.substring(0, lastValidIndex + 2) + '}';
-                    parsed = JSON.parse(jsonStr);
-                } else {
-                    throw new Error('JSON inválido');
-                }
+                parsed = repairJSON(jsonStr);
             }
             return NextResponse.json(parsed);
         }
@@ -106,7 +159,7 @@ export async function POST(request: NextRequest) {
 
         const model = genAI.getGenerativeModel({ 
             model: 'gemini-2.5-flash',
-            generationConfig: { maxOutputTokens: 8192 }
+            generationConfig: { maxOutputTokens: type === 'slides' ? SLIDES_MAX_TOKENS : DEFAULT_MAX_TOKENS }
         });
 
         const result = await model.generateContent(promptFn(topic));
@@ -121,14 +174,7 @@ export async function POST(request: NextRequest) {
         try {
             parsed = JSON.parse(jsonStr);
         } catch {
-            // Truncar en el último objeto completo
-            const lastValidIndex = jsonStr.lastIndexOf('}]');
-            if (lastValidIndex > 0) {
-                jsonStr = jsonStr.substring(0, lastValidIndex + 2) + '}';
-                parsed = JSON.parse(jsonStr);
-            } else {
-                throw new Error('JSON inválido');
-            }
+            parsed = repairJSON(jsonStr);
         }
 
         return NextResponse.json(parsed);
