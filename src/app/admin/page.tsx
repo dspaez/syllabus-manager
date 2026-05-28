@@ -9,7 +9,7 @@ type RecentSubject = {
     name: string;
     description: string | null;
     color: string | null;
-    semesters: { name: string } | null;
+    semesterName: string | null;
 };
 
 export default async function AdminPage() {
@@ -33,7 +33,19 @@ export default async function AdminPage() {
             .limit(5),
     ]);
 
-    const recentSubjects = (recentSubjectsRaw ?? []) as RecentSubject[];
+    const recentSubjects: RecentSubject[] = (recentSubjectsRaw ?? []).map((s) => {
+        const sem = s.semesters;
+        const semesterName = Array.isArray(sem)
+            ? (sem[0]?.name ?? null)
+            : (sem as { name: string } | null)?.name ?? null;
+        return {
+            id: s.id as string,
+            name: s.name as string,
+            description: s.description as string | null,
+            color: s.color as string | null,
+            semesterName,
+        };
+    });
 
     const metrics = [
         {
@@ -173,7 +185,7 @@ export default async function AdminPage() {
                                                 {subject.name}
                                             </p>
                                             <p className="mt-1 text-xs text-slate-500">
-                                                {subject.semesters?.name ?? 'Sin semestre'}
+                                                {subject.semesterName ?? 'Sin semestre'}
                                             </p>
                                             {subject.description && (
                                                 <p className="mt-1 text-xs text-slate-400 line-clamp-2">{subject.description}</p>
