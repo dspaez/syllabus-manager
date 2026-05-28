@@ -118,37 +118,19 @@ export default function PublicHomePage() {
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return subjects;
-
     return subjects.filter((subject) => {
       const haystack = [subject.name, subject.description ?? '', subject.semesterName ?? ''].join(' ').toLowerCase();
       return haystack.includes(term);
     });
   }, [subjects, search]);
 
-  const guideSteps = [
-    {
-      title: 'Busca por asignatura',
-      description: 'Encuentra más rápido por nombre, semestre o palabras clave desde el buscador principal.',
-      accent: 'from-blue-600 to-blue-500',
-    },
-    {
-      title: 'Identifica el semestre',
-      description: 'Cada card resalta el período académico y el color distintivo de la asignatura.',
-      accent: 'from-violet-600 to-violet-500',
-    },
-    {
-      title: 'Entra a los contenidos',
-      description: 'Accede a semanas, políticas y materiales publicados desde un solo flujo de navegación.',
-      accent: 'from-emerald-600 to-emerald-500',
-    },
-  ];
-
   return (
     <div className="relative flex flex-col text-slate-100">
+      {/* Hero */}
       <section className="relative overflow-hidden border-b border-white/10 bg-[linear-gradient(135deg,#020617_0%,#0f172a_24%,#1e40af_64%,#7c3aed_100%)] px-6 py-16 sm:py-20">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.12)_1px,transparent_1px)] bg-[size:72px_72px] opacity-25" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.26),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(124,58,237,0.28),transparent_28%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.12)_1px,transparent_1px)] bg-[size:72px_72px] opacity-40" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.26),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(124,58,237,0.28),transparent_26%)]" />
           <div className="absolute -left-16 top-16 h-52 w-52 rounded-full bg-blue-400/18 blur-3xl" />
           <div className="absolute right-0 top-10 h-64 w-64 rounded-full bg-violet-400/18 blur-3xl" />
           <div className="absolute bottom-0 left-1/3 h-40 w-40 rounded-full bg-emerald-400/12 blur-3xl" />
@@ -174,12 +156,12 @@ export default function PublicHomePage() {
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
                   href="#subjects"
-                  className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-bold text-slate-950 shadow-xl shadow-blue-950/25 transition-transform hover:-translate-y-0.5"
+                  className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-bold text-slate-950 shadow-xl shadow-blue-950/25 transition-transform hover:-translate-y-0.5 hover:shadow-2xl"
                 >
                   Ver asignaturas
                 </Link>
                 <span className="inline-flex items-center rounded-2xl border border-white/15 bg-white/8 px-4 py-3 text-sm font-semibold text-slate-100 backdrop-blur-xl">
-                  Contenido distribuido por unidades, semanas y materiales.
+                  Contenido por unidades, semanas y materiales.
                 </span>
               </div>
             </div>
@@ -187,7 +169,7 @@ export default function PublicHomePage() {
             <div className="rounded-[2rem] border border-white/15 bg-white/10 p-5 shadow-2xl shadow-blue-950/35 backdrop-blur-2xl">
               <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/35 p-5">
                 <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-300">Centro de navegación</p>
-                <div className="mt-5 relative">
+                <div className="relative mt-5">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
@@ -205,7 +187,7 @@ export default function PublicHomePage() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Buscar asignaturas, semestre o tema…"
-                    className="w-full rounded-[1.4rem] border border-white/10 bg-white/92 py-4 pl-12 pr-4 text-sm font-medium text-slate-900 shadow-xl outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-200/60"
+                    className="w-full rounded-[1.4rem] border border-white/10 bg-white/92 py-4 pl-12 pr-4 text-sm font-medium text-slate-900 shadow-xl outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-200 placeholder:text-slate-400"
                   />
                 </div>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
@@ -230,30 +212,7 @@ export default function PublicHomePage() {
         </div>
       </section>
 
-      <section className="relative border-b border-white/10 bg-slate-950/65 px-6 py-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Cómo navegar</p>
-            <h2 className="mt-2 text-2xl font-black text-white">Un flujo simple para encontrar cada recurso</h2>
-          </div>
-          <p className="max-w-2xl text-sm leading-6 text-slate-300">
-            La portada ahora destaca el buscador, explica el recorrido y distribuye mejor los contenidos para que el acceso
-            a cada asignatura sea más rápido desde móvil, tablet o escritorio.
-          </p>
-        </div>
-        <div className="mx-auto mt-6 grid max-w-7xl gap-4 md:grid-cols-3">
-          {guideSteps.map((step, index) => (
-            <div key={step.title} className="rounded-[1.8rem] border border-white/10 bg-white/6 p-5 backdrop-blur-xl">
-              <div className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br ${step.accent} text-sm font-black text-white`}>
-                0{index + 1}
-              </div>
-              <h3 className="text-lg font-black text-white">{step.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-300">{step.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
+      {/* Subjects grid */}
       <section id="subjects" className="mx-auto w-full max-w-7xl flex-1 px-6 py-14 text-slate-900">
         <div className="mb-8 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -265,11 +224,9 @@ export default function PublicHomePage() {
               </p>
             )}
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-slate-300 backdrop-blur-xl">
-            Usa el buscador superior o entra directo a la asignatura que necesitas.
-          </div>
         </div>
 
+        {/* Skeleton */}
         {loading && (
           <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {[...Array(8)].map((_, index) => (
@@ -286,11 +243,12 @@ export default function PublicHomePage() {
           </ul>
         )}
 
+        {/* Empty state */}
         {!loading && filtered.length === 0 && (
           <div className="rounded-[2rem] border border-dashed border-white/15 bg-white/6 px-6 py-24 text-center text-slate-300 backdrop-blur-xl">
             <p className="mb-4 text-5xl">🔍</p>
             <p className="text-xl font-bold text-white">
-              {search ? <>No encontramos resultados para “{search}”.</> : 'No hay asignaturas disponibles todavía.'}
+              {search ? <>No encontramos resultados para &quot;{search}&quot;.</> : 'No hay asignaturas disponibles todavía.'}
             </p>
             {search && (
               <button
@@ -303,6 +261,7 @@ export default function PublicHomePage() {
           </div>
         )}
 
+        {/* Cards */}
         {!loading && filtered.length > 0 && (
           <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filtered.map((subject, index) => {
@@ -314,48 +273,40 @@ export default function PublicHomePage() {
                 <li key={subject.id}>
                   <Link
                     href={`/subjects/${subject.id}`}
-                    className="group flex h-full flex-col overflow-hidden rounded-[2rem] border bg-white/92 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.85)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_80px_-36px_rgba(59,130,246,0.45)]"
+                    className="group flex h-full flex-col overflow-hidden rounded-[2rem] border bg-white shadow-[0_24px_60px_-40px_rgba(15,23,42,0.85)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_32px_72px_-32px_rgba(15,23,42,0.7)]"
                     style={{
                       borderColor: withAlpha(color, '3a'),
                       backgroundImage: `linear-gradient(180deg, ${withAlpha(color, '18')} 0%, rgba(255,255,255,0.96) 32%)`,
                     }}
                   >
+                    {/* Banner */}
                     <div
                       className="relative flex h-48 flex-col justify-between overflow-hidden px-6 py-5"
                       style={{ background: `linear-gradient(135deg, ${color} 0%, ${withAlpha(color, 'aa')} 100%)` }}
                     >
-                      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.16)_1px,transparent_1px)] bg-[size:22px_22px] opacity-40" />
+                      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.16)_1px,transparent_1px)] bg-[size:28px_28px] opacity-30" />
                       <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/15 blur-2xl" />
                       <div className="relative flex items-start justify-between gap-4">
                         <span className="inline-flex items-center rounded-full border border-white/20 bg-black/10 px-3 py-1 text-xs font-bold text-white/90 backdrop-blur-sm">
                           {subject.semesterName ?? 'Sin semestre'}
                         </span>
-                        <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white/90 opacity-0 transition group-hover:opacity-100">
-                          Ver contenidos →
-                        </span>
                       </div>
                       <div className="relative">
-                        <span className="mb-3 block text-5xl drop-shadow-lg">{emoji}</span>
-                        <h3 className="text-2xl font-black leading-tight text-white sm:text-[1.7rem]">{subject.name}</h3>
+                        <span className="mb-3 block text-4xl drop-shadow-lg">{emoji}</span>
+                        <h3 className="text-xl font-black leading-tight text-white sm:text-2xl">{subject.name}</h3>
                       </div>
                     </div>
 
+                    {/* Body */}
                     <div className="flex flex-1 flex-col p-6">
-                      <div
-                        className="inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.18em]"
-                        style={{ backgroundColor: withAlpha(color, '16'), color }}
-                      >
-                        Asignatura pública
-                      </div>
-
                       {subject.description ? (
-                        <p className="mt-4 flex-1 text-sm leading-7 text-slate-600">{subject.description}</p>
+                        <p className="line-clamp-3 flex-1 text-sm leading-7 text-slate-600">{subject.description}</p>
                       ) : (
-                        <p className="mt-4 flex-1 text-sm italic leading-7 text-slate-400">Descripción pendiente para esta asignatura.</p>
+                        <p className="flex-1 text-sm italic leading-7 text-slate-400">Sin descripción.</p>
                       )}
 
                       {tags.length > 0 && (
-                        <div className="mt-5 flex flex-wrap gap-2">
+                        <div className="mt-4 flex flex-wrap gap-2">
                           {tags.map((tag) => (
                             <span
                               key={tag}
@@ -372,8 +323,7 @@ export default function PublicHomePage() {
                         </div>
                       )}
 
-                      <div className="mt-6 flex items-center justify-between gap-3 border-t border-slate-200/80 pt-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Explorar recursos</p>
+                      <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
                         <span
                           className="inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-bold transition-all group-hover:translate-x-1"
                           style={{ backgroundColor: withAlpha(color, '14'), color }}

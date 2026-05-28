@@ -56,7 +56,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       <div className="relative flex-1">{children}</div>
 
       <footer className="relative border-t border-white/10 bg-slate-950/88">
-        <div className="mx-auto grid max-w-7xl gap-8 px-6 py-10 text-sm text-slate-300 md:grid-cols-[1.4fr,1fr,1fr]">
+        <div className="mx-auto grid max-w-7xl gap-8 px-6 py-10 text-sm text-slate-300 md:grid-cols-[1.6fr,1fr,1fr]">
           <div>
             <div className="mb-4 flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-950/40">
@@ -66,12 +66,11 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
               </span>
               <div>
                 <p className="text-base font-black text-white">Syllabus Manager</p>
-                <p className="text-xs text-slate-400">Zona pública para estudiantes y docentes</p>
+                <p className="text-xs text-slate-400">Plataforma académica</p>
               </div>
             </div>
             <p className="max-w-md leading-6 text-slate-400">
-              Una experiencia moderna para descubrir el contenido académico, revisar políticas y navegar por semanas,
-              unidades y recursos desde cualquier dispositivo.
+              Accede a guías, ejercicios y materiales organizados por asignatura, unidad y semana desde cualquier dispositivo.
             </p>
           </div>
 
@@ -88,25 +87,27 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
                   Catálogo de asignaturas
                 </Link>
               </li>
-              <li>
-                <Link href="/admin" className="transition-colors hover:text-white">
-                  Ir al panel admin
-                </Link>
-              </li>
             </ul>
           </div>
 
           <div>
-            <p className="mb-4 text-xs font-black uppercase tracking-[0.24em] text-slate-500">Experiencia</p>
-            <ul className="space-y-3 text-slate-400">
-              <li>Diseño dark blue + violet consistente con el admin</li>
-              <li>Glassmorphism sutil, gradientes y tarjetas rounded-3xl</li>
-              <li>Exploración rápida de materiales por asignatura y semana</li>
+            <p className="mb-4 text-xs font-black uppercase tracking-[0.24em] text-slate-500">Gestión</p>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/admin" className="transition-colors hover:text-white">
+                  Panel de administración
+                </Link>
+              </li>
+              <li>
+                <Link href="/login" className="transition-colors hover:text-white">
+                  Iniciar sesión
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
         <div className="border-t border-white/10 px-6 py-4 text-center text-xs text-slate-500">
-          © 2026 Syllabus Manager · Plataforma educativa con identidad visual unificada.
+          © 2026 Syllabus Manager · Todos los derechos reservados.
         </div>
       </footer>
     </div>
