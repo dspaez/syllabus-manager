@@ -53,7 +53,8 @@ export default async function SubjectsPage({
     searchParams?: Promise<{ semester?: string }>;
 }) {
     const params = await searchParams;
-    const semesterFilter = params?.semester;
+    const semesterFilter =
+        params?.semester && params.semester.trim() !== '' ? params.semester : undefined;
     const supabase = createClient(await cookies());
 
     const semestersRequest = supabase

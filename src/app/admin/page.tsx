@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createClient } from '@/utils/supabase/server';
 
+const DASHBOARD_DESCRIPTION = 'Gestiona semestres, asignaturas y materiales académicos desde este panel.';
+
 export default async function AdminPage() {
     const supabase = createClient(await cookies());
 
@@ -68,7 +70,7 @@ export default async function AdminPage() {
                     <div>
                         <h2 className="text-3xl font-black tracking-tight">Bienvenido 👋</h2>
                         <p className="mt-1 text-sm text-blue-100">
-                            Gestiona semestres, asignaturas y materiales académicos desde este panel.
+                            {DASHBOARD_DESCRIPTION}
                         </p>
                     </div>
                     <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-1.5 text-xs font-semibold backdrop-blur-sm">
@@ -181,7 +183,7 @@ export default async function AdminPage() {
                     <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
                 </svg>
                 <p className="text-sm text-blue-800">
-                    Gestiona semestres, asignaturas y materiales académicos desde este panel.
+                    {DASHBOARD_DESCRIPTION}
                 </p>
             </div>
         </div>

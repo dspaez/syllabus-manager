@@ -68,6 +68,7 @@ type RecentSubject = {
     name: string;
     color: string | null;
 };
+const NO_ACTIVE_SEMESTER = 'Sin semestre activo';
 
 function sectionTitle(pathname: string): string {
     if (pathname.startsWith('/admin/semesters')) return 'Semestres';
@@ -104,6 +105,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             setActiveSemester(semesterData?.name ?? null);
             setRecentSubjects((subjectData ?? []) as RecentSubject[]);
         }).catch(() => {
+            console.error('No se pudo cargar información contextual del admin');
             setEmail(null);
             setActiveSemester(null);
             setRecentSubjects([]);
@@ -137,7 +139,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     <p className="text-xs text-blue-100/90 pl-10">Panel Admin</p>
                     <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
                         <span className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
-                        Semestre activo: {activeSemester ?? 'Sin semestre activo'}
+                        Semestre activo: {activeSemester ?? NO_ACTIVE_SEMESTER}
                     </div>
                 </div>
 
