@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { createClient } from '@/utils/supabase/client';
 
 // ── SVG Icons ────────────────────────────────────────────────────────────────
@@ -63,6 +63,12 @@ const navLinks = [
     { href: '/admin/profile', label: 'Perfil', icon: UserCircleIcon },
 ];
 
+type RecentSubject = {
+    id: string;
+    name: string;
+    color: string | null;
+};
+
 function sectionTitle(pathname: string): string {
     if (pathname.startsWith('/admin/semesters')) return 'Semestres';
     if (pathname.startsWith('/admin/subjects')) return 'Asignaturas';
@@ -71,15 +77,32 @@ function sectionTitle(pathname: string): string {
     return 'Panel de control';
 }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
     const [email, setEmail] = useState<string | null>(null);
+    const [activeSemester, setActiveSemester] = useState<string | null>(null);
+    const [recentSubjects, setRecentSubjects] = useState<RecentSubject[]>([]);
 
     useEffect(() => {
         const supabase = createClient();
-        supabase.auth.getUser().then(({ data }) => {
-            setEmail(data.user?.email ?? null);
+        void Promise.all([
+            supabase.auth.getUser(),
+            supabase
+                .from('semesters')
+                .select('name')
+                .eq('is_active', true)
+                .limit(1)
+                .maybeSingle(),
+            supabase
+                .from('subjects')
+                .select('id, name, color')
+                .order('created_at', { ascending: false })
+                .limit(4),
+        ]).then(([{ data: authData }, { data: semesterData }, { data: subjectData }]) => {
+            setEmail(authData.user?.email ?? null);
+            setActiveSemester(semesterData?.name ?? null);
+            setRecentSubjects((subjectData ?? []) as RecentSubject[]);
         });
     }, []);
 
@@ -92,27 +115,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const initial = email ? email[0].toUpperCase() : '?';
 
     return (
-        <div className="flex min-h-screen bg-slate-50">
+        <div className="flex min-h-screen bg-slate-100">
             {/* Sidebar */}
-            <aside className="w-65 shrink-0 bg-white flex flex-col border-r border-gray-200">
+            <aside className="w-72 shrink-0 bg-slate-950 text-white flex flex-col border-r border-slate-900/80 shadow-2xl shadow-blue-950/20">
 
                 {/* Brand — gradient header */}
                 <div
-                    className="px-5 py-6"
-                    style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%)' }}
+                    className="px-6 py-6 border-b border-white/10"
+                    style={{ background: 'linear-gradient(145deg, #0f172a 0%, #1e40af 55%, #7c3aed 100%)' }}
                 >
-                    <div className="flex items-center gap-3 mb-1">
-                        <span className="text-2xl leading-none">🎓</span>
+                    <div className="flex items-center gap-3 mb-2">
+                        <span className="text-3xl leading-none">🎓</span>
                         <span className="text-base font-bold text-white tracking-tight">
                             Gestor Académico
                         </span>
                     </div>
-                    <p className="text-xs text-blue-200 pl-9">Panel Admin</p>
+                    <p className="text-xs text-blue-100/90 pl-10">Panel Admin</p>
+                    <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
+                        <span className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
+                        Semestre activo: {activeSemester ?? 'Sin semestre activo'}
+                    </div>
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 px-3 py-5 space-y-1">
-                    <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                <nav className="flex-1 px-4 py-5 space-y-1.5">
+                    <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
                         Menú
                     </p>
                     {navLinks.map(({ href, label, icon: Icon }) => {
@@ -121,38 +148,66 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <Link
                                 key={href}
                                 href={href}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all relative ${isActive
-                                        ? 'bg-blue-50 text-blue-700 font-semibold'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                title={label}
+                                className={`group flex items-center gap-3 px-3 py-3 rounded-2xl text-sm font-medium transition-all duration-200 relative ${isActive
+                                        ? 'bg-gradient-to-r from-blue-500/30 to-violet-500/30 text-white shadow-lg shadow-blue-900/20'
+                                        : 'text-slate-200/90 hover:bg-white/10 hover:text-white hover:translate-x-0.5'
                                     }`}
                             >
                                 {isActive && (
-                                    <span className="absolute left-0 top-2 bottom-2 w-1 bg-blue-600 rounded-r-full" />
+                                    <span className="absolute left-0 top-2.5 bottom-2.5 w-1 bg-emerald-300 rounded-r-full" />
                                 )}
-                                <Icon className="size-5 shrink-0" />
+                                <Icon className={`size-6 shrink-0 transition-transform ${isActive ? '' : 'group-hover:scale-110'}`} />
                                 {label}
                             </Link>
                         );
                     })}
+
+                    <div className="pt-6">
+                        <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                            Acceso rápido
+                        </p>
+                        <div className="space-y-1.5">
+                            {recentSubjects.length === 0 && (
+                                <p className="px-3 text-xs text-slate-400">
+                                    Sin asignaturas recientes
+                                </p>
+                            )}
+                            {recentSubjects.map((subject) => (
+                                <Link
+                                    key={subject.id}
+                                    href={`/admin/subjects/${subject.id}`}
+                                    className="group flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-200 hover:bg-white/10 hover:text-white transition-colors"
+                                >
+                                    <span
+                                        className="h-2.5 w-2.5 rounded-full shadow-sm"
+                                        style={{ backgroundColor: subject.color ?? '#7c3aed' }}
+                                    />
+                                    <span className="truncate">{subject.name}</span>
+                                    <span className="ml-auto text-[10px] text-slate-400 group-hover:text-slate-200 transition-colors">↗</span>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
                 </nav>
 
                 {/* User + sign out */}
-                <div className="px-3 py-4 border-t border-gray-100">
-                    <div className="flex items-center gap-3 px-3 py-3 mb-2 rounded-xl bg-gray-50 border border-gray-100">
+                <div className="px-4 py-4 border-t border-white/10">
+                    <div className="flex items-center gap-3 px-3 py-3 mb-2 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md">
                         <span
-                            className="shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm"
-                            style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)' }}
+                            className="shrink-0 h-11 w-11 rounded-2xl flex items-center justify-center text-white text-sm font-black shadow-lg"
+                            style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 60%, #22c55e 100%)' }}
                         >
                             {initial}
                         </span>
                         <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold text-gray-700 truncate">{email ?? '…'}</p>
-                            <p className="text-xs text-gray-400">Administrador</p>
+                            <p className="text-xs font-semibold text-white truncate">{email ?? '…'}</p>
+                            <p className="text-xs text-slate-300">Administrador</p>
                         </div>
                     </div>
                     <button
                         onClick={handleSignOut}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-red-500/15 hover:text-red-200 transition-colors"
                     >
                         <ArrowRightOnRectangleIcon className="size-5 shrink-0" />
                         Cerrar sesión
@@ -163,19 +218,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Right column */}
             <div className="flex flex-col flex-1 min-w-0">
                 {/* Top header */}
-                <header className="h-16 shrink-0 bg-white border-b border-gray-100 flex items-center px-8 gap-3 shadow-sm">
+                <header className="h-20 shrink-0 border-b border-slate-200/80 bg-white/85 backdrop-blur-md flex items-center px-8 gap-3 shadow-sm shadow-slate-300/20">
                     <div className="flex-1">
-                        <p className="text-xs text-gray-400">Panel de administración</p>
-                        <h1 className="text-base font-bold text-gray-900 leading-tight">
+                        <p className="text-xs text-slate-400">Panel de administración</p>
+                        <h1 className="text-lg font-black text-slate-900 leading-tight tracking-tight">
                             {sectionTitle(pathname)}
                         </h1>
+                    </div>
+                    <div className="hidden lg:flex items-center gap-2">
+                        <Link
+                            href="/admin/subjects/new"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-700 to-violet-700 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-blue-200 hover:shadow-lg transition-shadow"
+                        >
+                            + Asignatura
+                        </Link>
+                        <Link
+                            href="/admin/semesters/new"
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                        >
+                            + Semestre
+                        </Link>
                     </div>
                     {/* View public site button */}
                     <Link
                         href="/"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 border border-gray-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 border border-slate-200 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 px-3 py-2 rounded-xl transition-colors"
                     >
                         Ver sitio público
                         <ArrowTopRightOnSquareIcon className="size-3.5" />
