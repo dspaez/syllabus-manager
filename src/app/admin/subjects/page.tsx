@@ -24,7 +24,7 @@ type Subject = {
     color: string | null;
     created_at: string;
     semester_id: string | null;
-    semesters: { name: string } | null;
+    semesterName: string | null;
     units: Unit[];
 };
 
@@ -72,12 +72,28 @@ export default async function SubjectsPage({
         subjectRequest = subjectRequest.eq('semester_id', semesterFilter);
     }
 
-    const [{ data: subjects, error }, { data: semesters }] = await Promise.all([
+    const [{ data: subjectsRaw, error }, { data: semesters }] = await Promise.all([
         subjectRequest,
         semestersRequest,
     ]);
 
-    const typedSubjects = (subjects ?? []) as Subject[];
+    const typedSubjects: Subject[] = (subjectsRaw ?? []).map((s) => {
+        const sem = s.semesters;
+        const semesterName = Array.isArray(sem)
+            ? (sem[0]?.name ?? null)
+            : (sem as { name: string } | null)?.name ?? null;
+        return {
+            id: s.id as string,
+            name: s.name as string,
+            description: s.description as string | null,
+            color: s.color as string | null,
+            created_at: s.created_at as string,
+            semester_id: s.semester_id as string | null,
+            semesterName,
+            units: (s.units ?? []) as Unit[],
+        };
+    });
+
     const totalSubjects = typedSubjects.length;
     const totalUnits = typedSubjects.reduce((acc, subject) => acc + (subject.units?.length ?? 0), 0);
     const activeFilterName =
@@ -93,7 +109,7 @@ export default async function SubjectsPage({
                 </div>
                 <Link
                     href="/admin/subjects/new"
-                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-700 to-violet-700 text-white text-sm font-semibold px-5 py-3 shadow-lg shadow-blue-200/60 hover:shadow-xl transition-shadow"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-700 to-violet-700 text-white text-sm font-semibold px-5 py-3 shadow-lg shadow-blue-200/60 hover:opacity-90 transition-opacity"
                 >
                     <span className="text-base leading-none">＋</span>
                     Nueva asignatura
@@ -147,7 +163,7 @@ export default async function SubjectsPage({
             )}
 
             {/* Empty state */}
-            {!error && (!subjects || subjects.length === 0) && (
+            {!error && typedSubjects.length === 0 && (
                 <div className="rounded-3xl border border-dashed border-slate-300 bg-gradient-to-b from-white to-slate-50 text-center py-20 px-6">
                     <p className="text-5xl mb-4">🚀</p>
                     <p className="text-lg font-bold text-slate-700">Aún no hay asignaturas en este filtro</p>
@@ -156,9 +172,9 @@ export default async function SubjectsPage({
             )}
 
             {/* Cards grid */}
-            {subjects && subjects.length > 0 && (
+            {typedSubjects.length > 0 && (
                 <ul className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
-                    {(subjects as Subject[]).map((subject) => {
+                    {typedSubjects.map((subject) => {
                         const accentColor = subject.color ?? '#94a3b8';
                         const { unitCount, weekCount, materialCount } = getSubjectStats(subject.units ?? []);
                         return (
@@ -172,14 +188,14 @@ export default async function SubjectsPage({
                                     <div
                                         className="pointer-events-none absolute inset-0 opacity-20"
                                         style={{
-                                            backgroundImage: 'linear-gradient(120deg, rgba(255,255,255,.24) 10%, transparent 10%, transparent 50%, rgba(255,255,255,.2) 50%, rgba(255,255,255,.2) 60%, transparent 60%, transparent)',
+                                            backgroundImage: 'linear-gradient(120deg, rgba(255,255,255,.24) 10%, transparent 10%, transparent 50%, rgba(255,255,255,.2) 50%, rgba(255,255,255,.2) 60%, transparent 60%, transparent 100%)',
                                             backgroundSize: '36px 36px',
                                         }}
                                     />
                                     {/* Semester badge — top right */}
-                                    {subject.semesters?.name && (
+                                    {subject.semesterName && (
                                         <span className="absolute top-3 right-4 text-xs font-semibold text-white bg-black/25 backdrop-blur-sm px-2.5 py-1 rounded-full">
-                                            {subject.semesters.name}
+                                            {subject.semesterName}
                                         </span>
                                     )}
                                     <span className="relative z-10 text-4xl font-black text-white/95 tracking-tight select-none drop-shadow">
@@ -230,7 +246,6 @@ export default async function SubjectsPage({
                                         href={`/admin/subjects/${subject.id}/edit`}
                                         className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-700 transition-colors"
                                     >
-                                        {/* Pencil SVG */}
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-3.5">
                                             <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
                                             <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
