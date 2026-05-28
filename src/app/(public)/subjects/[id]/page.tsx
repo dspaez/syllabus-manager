@@ -53,27 +53,27 @@ type Setting = {
 };
 
 type RawMaterial = {
-  id: unknown;
-  name: unknown;
-  type: unknown;
-  source: unknown;
-  file_url: unknown;
-  is_published: unknown;
+  id: string | null | undefined;
+  name: string | null | undefined;
+  type: string | null | undefined;
+  source: string | null | undefined;
+  file_url: string | null | undefined;
+  is_published: boolean | null | undefined;
 };
 
 type RawWeek = {
-  id: unknown;
-  number: unknown;
-  title: unknown;
-  description: unknown;
+  id: string | null | undefined;
+  number: number | null | undefined;
+  title: string | null | undefined;
+  description: string | null | undefined;
   materials?: RawMaterial[] | null;
 };
 
 type RawUnit = {
-  id: unknown;
-  name: unknown;
-  description: unknown;
-  order: unknown;
+  id: string | null | undefined;
+  name: string | null | undefined;
+  description: string | null | undefined;
+  order: number | null | undefined;
   weeks?: RawWeek[] | null;
 };
 
@@ -163,7 +163,7 @@ export default async function PublicSubjectPage({
         type: material.type as string | null,
         source: material.source as string | null,
         file_url: material.file_url as string | null,
-        is_published: material.is_published as boolean,
+        is_published: material.is_published === true,
       })),
     })),
   }));

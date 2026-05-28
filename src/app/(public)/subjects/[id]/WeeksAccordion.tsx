@@ -357,9 +357,9 @@ export default function WeeksAccordion({
                       {week.title && <p className="text-sm font-bold text-slate-900">{week.title}</p>}
                       {keywords ? (
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          {keywords.map((keyword, index) => (
+                          {keywords.map((keyword) => (
                             <span
-                              key={`${week.id}-kw-${index}`}
+                              key={`${week.id}-kw-${keyword}`}
                               className="rounded-full px-2 py-0.5 text-xs font-semibold"
                               style={{ backgroundColor: toTranslucentBackground(accentColor), color: accentColor }}
                             >

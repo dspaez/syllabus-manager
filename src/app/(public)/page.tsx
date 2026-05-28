@@ -273,7 +273,7 @@ export default function PublicHomePage() {
         {loading && (
           <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {[...Array(8)].map((_, index) => (
-              <li key={index} className="overflow-hidden rounded-[1.9rem] border border-white/10 bg-white/8 animate-pulse">
+              <li key={`skeleton-${index}`} className="overflow-hidden rounded-[1.9rem] border border-white/10 bg-white/8 animate-pulse">
                 <div className="h-48 bg-white/10" />
                 <div className="space-y-3 p-6">
                   <div className="h-4 w-1/2 rounded bg-white/10" />
