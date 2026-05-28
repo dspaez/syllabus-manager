@@ -45,10 +45,11 @@ const TYPE_LABELS: Record<string, string> = {
   ai: 'Presentación',
 };
 
-const GROUP_META: Record<MaterialGroup, { title: string; classes: string; icon: JSX.Element }> = {
+const GROUP_META: Record<MaterialGroup, { title: string; classes: string; iconClass: string; icon: JSX.Element }> = {
   presentations: {
     title: 'Presentaciones',
     classes: 'bg-violet-50 text-violet-700 border-violet-200',
+    iconClass: 'text-violet-700',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="size-4">
         <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5v6A1.5 1.5 0 0 1 12.5 11H9.25l.94 1.5H11a.75.75 0 0 1 0 1.5H5a.75.75 0 0 1 0-1.5h.81l.94-1.5H3.5A1.5 1.5 0 0 1 2 9.5v-6Z" />
@@ -58,6 +59,7 @@ const GROUP_META: Record<MaterialGroup, { title: string; classes: string; icon: 
   pdf: {
     title: 'Documentos PDF',
     classes: 'bg-red-50 text-red-700 border-red-200',
+    iconClass: 'text-red-700',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="size-4">
         <path fillRule="evenodd" d="M4 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6.414A2 2 0 0 0 13.414 5L11 2.586A2 2 0 0 0 9.586 2H4Zm4 7a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 8 9Zm-1.5-4.25a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3Z" clipRule="evenodd" />
@@ -67,6 +69,7 @@ const GROUP_META: Record<MaterialGroup, { title: string; classes: string; icon: 
   docs: {
     title: 'Guías y Documentos',
     classes: 'bg-blue-50 text-blue-700 border-blue-200',
+    iconClass: 'text-blue-700',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="size-4">
         <path fillRule="evenodd" d="M4 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6.414A2 2 0 0 0 13.414 5L11 2.586A2 2 0 0 0 9.586 2H4Zm1 5.75A.75.75 0 0 1 5.75 7h4.5a.75.75 0 0 1 0 1.5h-4.5A.75.75 0 0 1 5 7.75Zm0 3A.75.75 0 0 1 5.75 10h4.5a.75.75 0 0 1 0 1.5h-4.5A.75.75 0 0 1 5 10.75Z" clipRule="evenodd" />
@@ -95,6 +98,29 @@ function matchesFilter(material: Material, filter: Filter): boolean {
   return getMaterialGroup(material) === filter;
 }
 
+function toTranslucentBackground(color: string): string {
+  const colorInput = color.trim();
+  if (/^#[\da-f]{3}$/i.test(colorInput)) {
+    const normalized = `#${colorInput[1]}${colorInput[1]}${colorInput[2]}${colorInput[2]}${colorInput[3]}${colorInput[3]}`;
+    return `${normalized}1a`;
+  }
+  if (/^#[\da-f]{6}$/i.test(colorInput)) return `${colorInput}1a`;
+
+  const rgbMatch = colorInput.match(/^rgb\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)$/i);
+  if (rgbMatch) {
+    const [, r, g, b] = rgbMatch;
+    return `rgba(${r}, ${g}, ${b}, 0.1)`;
+  }
+
+  const rgbaMatch = colorInput.match(/^rgba\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*[\d.]+\s*\)$/i);
+  if (rgbaMatch) {
+    const [, r, g, b] = rgbaMatch;
+    return `rgba(${r}, ${g}, ${b}, 0.1)`;
+  }
+
+  return 'rgba(30, 64, 175, 0.1)';
+}
+
 function TypeBadge({ material }: { material: Material }) {
   const group = getMaterialGroup(material);
   if (!group) return null;
@@ -111,11 +137,13 @@ function TypeBadge({ material }: { material: Material }) {
 
 function MaterialIcon({ material, accentColor }: { material: Material; accentColor: string }) {
   const group = getMaterialGroup(material) ?? 'docs';
-  const bg = `${accentColor}1a`;
   const icon = GROUP_META[group].icon;
 
   return (
-    <div className="shrink-0 h-11 w-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: bg, color: accentColor }}>
+    <div
+      className="shrink-0 h-11 w-11 rounded-xl flex items-center justify-center"
+      style={{ backgroundColor: toTranslucentBackground(accentColor), color: accentColor }}
+    >
       {icon}
     </div>
   );
@@ -187,7 +215,7 @@ function WeekMaterials({
         return (
           <section key={group} className="space-y-2">
             <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border bg-white text-gray-700 border-gray-200">
-              <span className={GROUP_META[group].classes.split(' ')[1]}>{GROUP_META[group].icon}</span>
+              <span className={GROUP_META[group].iconClass}>{GROUP_META[group].icon}</span>
               {GROUP_META[group].title}
             </div>
             <div className="space-y-2">
@@ -210,7 +238,14 @@ export default function WeeksAccordion({
   accentColor: string;
 }) {
   const [filter, setFilter] = useState<Filter>('all');
-  const [weekOpenState, setWeekOpenState] = useState<Record<string, boolean>>({});
+  const [weekOpenState, setWeekOpenState] = useState<Record<string, boolean>>(() => {
+    const initialState: Record<string, boolean> = {};
+    units.forEach((unit) => {
+      const firstWeekId = unit.weeks[0]?.id;
+      if (firstWeekId) initialState[firstWeekId] = true;
+    });
+    return initialState;
+  });
 
   const filteredUnits = useMemo(
     () =>
@@ -226,10 +261,6 @@ export default function WeeksAccordion({
         }))
         .filter((unit) => unit.weeks.length > 0),
     [filter, units]
-  );
-  const defaultOpenWeekIds = useMemo(
-    () => new Set(filteredUnits.map((unit) => unit.weeks[0]?.id).filter(Boolean)),
-    [filteredUnits]
   );
 
   if (units.length === 0) return null;
@@ -283,7 +314,7 @@ export default function WeeksAccordion({
 
           <div className="divide-y divide-gray-100">
             {unit.weeks.map((week) => {
-              const isOpen = weekOpenState[week.id] ?? defaultOpenWeekIds.has(week.id);
+              const isOpen = weekOpenState[week.id] ?? false;
               const keywords = parseKeywords(week.description);
 
               return (
@@ -292,7 +323,7 @@ export default function WeeksAccordion({
                     type="button"
                     onClick={() => {
                       setWeekOpenState((current) => {
-                        const currentValue = current[week.id] ?? defaultOpenWeekIds.has(week.id);
+                        const currentValue = current[week.id] ?? false;
                         return {
                           ...current,
                           [week.id]: !currentValue,
