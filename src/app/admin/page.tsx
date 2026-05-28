@@ -4,6 +4,14 @@ import { createClient } from '@/utils/supabase/server';
 
 const DASHBOARD_DESCRIPTION = 'Gestiona semestres, asignaturas y materiales académicos desde este panel.';
 
+type RecentSubject = {
+    id: string;
+    name: string;
+    description: string | null;
+    color: string | null;
+    semesters: { name: string } | null;
+};
+
 export default async function AdminPage() {
     const supabase = createClient(await cookies());
 
@@ -12,7 +20,7 @@ export default async function AdminPage() {
         { count: subjectCount },
         { count: materialCount },
         { data: activeSemester },
-        { data: recentSubjects },
+        { data: recentSubjectsRaw },
     ] = await Promise.all([
         supabase.from('semesters').select('*', { count: 'exact', head: true }),
         supabase.from('subjects').select('*', { count: 'exact', head: true }),
@@ -24,6 +32,8 @@ export default async function AdminPage() {
             .order('created_at', { ascending: false })
             .limit(5),
     ]);
+
+    const recentSubjects = (recentSubjectsRaw ?? []) as RecentSubject[];
 
     const metrics = [
         {
@@ -140,13 +150,13 @@ export default async function AdminPage() {
                         </Link>
                     </div>
 
-                    {(!recentSubjects || recentSubjects.length === 0) && (
+                    {recentSubjects.length === 0 && (
                         <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
                             <p className="text-sm font-semibold text-slate-500">Sin asignaturas recientes</p>
                         </div>
                     )}
 
-                    {recentSubjects && recentSubjects.length > 0 && (
+                    {recentSubjects.length > 0 && (
                         <ul className="space-y-3">
                             {recentSubjects.map((subject) => (
                                 <li key={subject.id}>
@@ -155,7 +165,7 @@ export default async function AdminPage() {
                                         className="group flex items-start gap-3 rounded-2xl border border-slate-200 p-4 hover:border-blue-200 hover:bg-blue-50/40 transition-colors"
                                     >
                                         <span
-                                            className="mt-0.5 h-3 w-3 rounded-full shadow-sm"
+                                            className="mt-0.5 h-3 w-3 shrink-0 rounded-full shadow-sm"
                                             style={{ backgroundColor: subject.color ?? '#7c3aed' }}
                                         />
                                         <div className="min-w-0 flex-1">
@@ -180,7 +190,7 @@ export default async function AdminPage() {
             {/* Info message */}
             <div className="mt-6 flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50/80 px-5 py-4">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-5 shrink-0 text-blue-500 mt-0.5">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
+                    <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.75 13h.5a.75.75 0 0 0 0-1.5h-.5a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.25 7H9Z" clipRule="evenodd" />
                 </svg>
                 <p className="text-sm text-blue-800">
                     {DASHBOARD_DESCRIPTION}
