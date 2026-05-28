@@ -81,7 +81,10 @@ const GROUP_META: Record<MaterialGroup, { title: string; classes: string; iconCl
 function parseKeywords(description: string | null): string[] | null {
   if (!description) return null;
   if (!description.includes(',')) return null;
-  const parts = description.split(',').map((kw) => kw.trim()).filter(Boolean);
+  const parts = description
+    .split(',')
+    .map((keyword) => keyword.trim())
+    .filter(Boolean);
   return parts.length > 1 ? parts : null;
 }
 
@@ -128,11 +131,7 @@ function TypeBadge({ material }: { material: Material }) {
   const type = material.source === 'ai' ? 'ai' : material.type;
   const label = type ? (TYPE_LABELS[type] ?? type.toUpperCase()) : 'Material';
 
-  return (
-    <span className={`shrink-0 inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full border ${classes}`}>
-      {label}
-    </span>
-  );
+  return <span className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${classes}`}>{label}</span>;
 }
 
 function MaterialIcon({ material, accentColor }: { material: Material; accentColor: string }) {
@@ -141,7 +140,7 @@ function MaterialIcon({ material, accentColor }: { material: Material; accentCol
 
   return (
     <div
-      className="shrink-0 h-11 w-11 rounded-xl flex items-center justify-center"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
       style={{ backgroundColor: toTranslucentBackground(accentColor), color: accentColor }}
     >
       {icon}
@@ -156,17 +155,14 @@ function MaterialCard({ material, accentColor }: { material: Material; accentCol
     return (
       <Link
         href={`/materials/${material.id}`}
-        className="group flex items-center gap-4 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:shadow-md hover:-translate-y-0.5 transition-all"
+        className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 transition-all hover:-translate-y-0.5 hover:shadow-md"
       >
         <MaterialIcon material={material} accentColor={accentColor} />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-900 truncate">{material.name}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-900">{material.name}</p>
         </div>
         <TypeBadge material={material} />
-        <span
-          className="shrink-0 text-xs font-semibold px-3 py-1 rounded-lg text-white"
-          style={{ backgroundColor: accentColor }}
-        >
+        <span className="shrink-0 rounded-xl px-3 py-1 text-xs font-semibold text-white" style={{ backgroundColor: accentColor }}>
           Abrir
         </span>
       </Link>
@@ -178,15 +174,14 @@ function MaterialCard({ material, accentColor }: { material: Material; accentCol
       href={material.file_url ?? '#'}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-center gap-4 px-4 py-3 rounded-xl border border-gray-200 bg-white hover:shadow-md hover:-translate-y-0.5 transition-all"
+      className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 transition-all hover:-translate-y-0.5 hover:shadow-md"
     >
       <MaterialIcon material={material} accentColor={accentColor} />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-900 truncate">{material.name}</p>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-slate-900">{material.name}</p>
       </div>
       <TypeBadge material={material} />
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-        className="shrink-0 size-4 text-gray-300 group-hover:text-gray-600 transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-600">
         <path fillRule="evenodd" d="M4.25 5.5a.75.75 0 0 0-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 0 0 .75-.75v-4a.75.75 0 0 1 1.5 0v4A2.25 2.25 0 0 1 12.75 17h-8.5A2.25 2.25 0 0 1 2 14.75v-8.5A2.25 2.25 0 0 1 4.25 4h5a.75.75 0 0 1 0 1.5h-5Z" clipRule="evenodd" />
         <path fillRule="evenodd" d="M6.194 12.753a.75.75 0 0 0 1.06.053L16.5 4.44v2.81a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-.75-.75h-4.5a.75.75 0 0 0 0 1.5h2.553l-9.056 8.194a.75.75 0 0 0-.053 1.06Z" clipRule="evenodd" />
       </svg>
@@ -201,21 +196,24 @@ function WeekMaterials({
   materials: Material[];
   accentColor: string;
 }) {
-  const groups = useMemo(() => ({
-    presentations: materials.filter((material) => getMaterialGroup(material) === 'presentations'),
-    pdf: materials.filter((material) => getMaterialGroup(material) === 'pdf'),
-    docs: materials.filter((material) => getMaterialGroup(material) === 'docs'),
-  }), [materials]);
+  const groups = useMemo(
+    () => ({
+      presentations: materials.filter((material) => getMaterialGroup(material) === 'presentations'),
+      pdf: materials.filter((material) => getMaterialGroup(material) === 'pdf'),
+      docs: materials.filter((material) => getMaterialGroup(material) === 'docs'),
+    }),
+    [materials]
+  );
 
   return (
-    <div className="px-4 pb-4 space-y-4 bg-gray-50/60">
+    <div className="space-y-4 bg-slate-50/75 px-4 pb-4 pt-2 sm:px-6">
       {(Object.keys(groups) as MaterialGroup[]).map((group) => {
         const items = groups[group];
         if (items.length === 0) return null;
 
         return (
           <section key={group} className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border bg-white text-gray-700 border-gray-200">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
               <span className={GROUP_META[group].iconClass}>{GROUP_META[group].icon}</span>
               {GROUP_META[group].title}
             </div>
@@ -268,58 +266,73 @@ export default function WeeksAccordion({
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
-        {FILTER_OPTIONS.map((option) => {
-          const active = option.value === filter;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setFilter(option.value)}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-colors ${active
-                ? 'text-white border-transparent'
-                : 'text-gray-600 bg-white border-gray-200 hover:border-gray-300 hover:text-gray-900'}`}
-              style={active ? { backgroundColor: accentColor } : undefined}
-            >
-              {option.label}
-            </button>
-          );
-        })}
+      <div className="rounded-[1.8rem] border border-white/10 bg-white/6 p-4 backdrop-blur-xl sm:p-5">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">Filtros</p>
+            <p className="mt-1 text-sm font-semibold text-white">Selecciona el tipo de material que quieres ver</p>
+          </div>
+          <span className="text-xs text-slate-400">Los resultados se actualizan sin cambiar la estructura del contenido.</span>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {FILTER_OPTIONS.map((option) => {
+            const active = option.value === filter;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setFilter(option.value)}
+                className={`rounded-2xl border px-4 py-2.5 text-sm font-bold transition-all ${
+                  active
+                    ? 'border-transparent text-white shadow-lg'
+                    : 'border-white/10 bg-slate-950/30 text-slate-200 hover:border-white/20 hover:bg-white/8'
+                }`}
+                style={active ? { backgroundColor: accentColor, boxShadow: `0 14px 30px -18px ${accentColor}` } : undefined}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {filteredUnits.length === 0 && (
-        <div className="text-center py-20 text-gray-400">
+        <div className="rounded-[1.8rem] border border-dashed border-white/15 bg-white/4 py-20 text-center text-slate-300">
           <p className="text-base font-medium">No hay semanas con materiales para este filtro.</p>
         </div>
       )}
 
       {filteredUnits.map((unit, unitIndex) => (
-        <section key={unit.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-          <div className="flex items-center gap-4 px-6 py-5 bg-gray-50 border-b border-gray-100">
+        <section
+          key={unit.id}
+          className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/92 shadow-[0_28px_70px_-44px_rgba(15,23,42,0.9)]"
+        >
+          <div
+            className="flex flex-wrap items-center gap-4 border-b border-slate-200 px-6 py-5"
+            style={{ background: `linear-gradient(135deg, ${toTranslucentBackground(accentColor)} 0%, rgba(248,250,252,0.96) 70%)` }}
+          >
             <span
-              className="shrink-0 h-10 w-10 flex items-center justify-center rounded-full text-white text-sm font-bold shadow-sm"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-black text-white shadow-lg"
               style={{ backgroundColor: accentColor }}
             >
               {unitIndex + 1}
             </span>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-lg text-gray-900 leading-tight">{unit.name}</h2>
-              {unit.description && (
-                <p className="mt-0.5 text-xs text-gray-500">{unit.description}</p>
-              )}
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-black leading-tight text-slate-900">{unit.name}</h2>
+              {unit.description && <p className="mt-1 text-sm text-slate-500">{unit.description}</p>}
             </div>
-            <span className="shrink-0 text-xs font-medium text-gray-500 bg-white border border-gray-200 px-2.5 py-1 rounded-full">
+            <span className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
               {unit.weeks.length} {unit.weeks.length === 1 ? 'semana' : 'semanas'}
             </span>
           </div>
 
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-slate-100">
             {unit.weeks.map((week) => {
               const isOpen = weekOpenState[week.id] ?? false;
               const keywords = parseKeywords(week.description);
 
               return (
-                <div key={week.id} className="border-b border-gray-100 last:border-0">
+                <div key={week.id} className="last:border-0">
                   <button
                     type="button"
                     onClick={() => {
@@ -331,42 +344,47 @@ export default function WeeksAccordion({
                         };
                       });
                     }}
-                    className="w-full text-left flex items-center gap-3 px-6 py-4 bg-white hover:bg-gray-50 transition-colors"
+                    className="flex w-full items-center gap-3 bg-white px-6 py-4 text-left transition-colors hover:bg-slate-50"
                     aria-expanded={isOpen}
                   >
-                    <span className="shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-600">
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-sm font-black"
+                      style={{ backgroundColor: toTranslucentBackground(accentColor), color: accentColor }}
+                    >
                       {week.number}
                     </span>
-                    <div className="flex-1 min-w-0">
-                      {week.title && (
-                        <p className="font-semibold text-gray-900 text-sm">{week.title}</p>
-                      )}
+                    <div className="min-w-0 flex-1">
+                      {week.title && <p className="text-sm font-bold text-slate-900">{week.title}</p>}
                       {keywords ? (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {keywords.map((kw, idx) => (
-                            <span key={`${week.id}-kw-${idx}`} className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full font-medium">
-                              {kw}
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {keywords.map((keyword) => (
+                            <span
+                              key={`${week.id}-kw-${keyword}`}
+                              className="rounded-full px-2 py-0.5 text-xs font-semibold"
+                              style={{ backgroundColor: toTranslucentBackground(accentColor), color: accentColor }}
+                            >
+                              {keyword}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        week.description && (
-                          <p className="text-xs text-gray-500 mt-0.5">{week.description}</p>
-                        )
+                        week.description && <p className="mt-0.5 text-xs text-slate-500">{week.description}</p>
                       )}
                     </div>
-                    <span className="shrink-0 text-xs text-gray-400">
+                    <span className="shrink-0 text-xs font-semibold text-slate-400">
                       {week.materials.length} {week.materials.length === 1 ? 'material' : 'materiales'}
                     </span>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                      className={`shrink-0 size-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className={`size-4 shrink-0 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                    >
                       <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" />
                     </svg>
                   </button>
 
-                  {isOpen && (
-                    <WeekMaterials materials={week.materials} accentColor={accentColor} />
-                  )}
+                  {isOpen && <WeekMaterials materials={week.materials} accentColor={accentColor} />}
                 </div>
               );
             })}
