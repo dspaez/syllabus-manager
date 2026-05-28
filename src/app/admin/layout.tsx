@@ -103,6 +103,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             setEmail(authData.user?.email ?? null);
             setActiveSemester(semesterData?.name ?? null);
             setRecentSubjects((subjectData ?? []) as RecentSubject[]);
+        }).catch(() => {
+            setEmail(null);
+            setActiveSemester(null);
+            setRecentSubjects([]);
         });
     }, []);
 
