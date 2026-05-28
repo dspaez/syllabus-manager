@@ -52,6 +52,31 @@ type Setting = {
   value: string;
 };
 
+type RawMaterial = {
+  id: unknown;
+  name: unknown;
+  type: unknown;
+  source: unknown;
+  file_url: unknown;
+  is_published: unknown;
+};
+
+type RawWeek = {
+  id: unknown;
+  number: unknown;
+  title: unknown;
+  description: unknown;
+  materials?: RawMaterial[] | null;
+};
+
+type RawUnit = {
+  id: unknown;
+  name: unknown;
+  description: unknown;
+  order: unknown;
+  weeks?: RawWeek[] | null;
+};
+
 function subjectEmoji(name: string): string {
   const n = name.toLowerCase();
   if (n.includes('java')) return '☕';
@@ -122,17 +147,17 @@ export default async function PublicSubjectPage({
     description: subject.description as string | null,
   };
 
-  const unitList: Unit[] = (units ?? []).map((unit) => ({
+  const unitList: Unit[] = (units ?? []).map((unit: RawUnit) => ({
     id: unit.id as string,
     name: unit.name as string,
     description: unit.description as string | null,
     order: unit.order as number | null,
-    weeks: (unit.weeks ?? []).map((week) => ({
+    weeks: (unit.weeks ?? []).map((week: RawWeek) => ({
       id: week.id as string,
       number: week.number as number,
       title: week.title as string | null,
       description: week.description as string | null,
-      materials: (week.materials ?? []).map((material) => ({
+      materials: (week.materials ?? []).map((material: RawMaterial) => ({
         id: material.id as string,
         name: material.name as string,
         type: material.type as string | null,
