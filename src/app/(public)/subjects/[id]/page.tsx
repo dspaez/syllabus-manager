@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { createClient } from '@/utils/supabase/server';
 import PoliciesAccordion from './PoliciesAccordion';
-import WeeksAccordion from './WeeksAccordion';
+import { createClient } from '@/utils/supabase/server';
+import { subjectEmoji } from '@/utils/subjectEmoji';
 
 export const revalidate = 0;
 
@@ -20,7 +20,6 @@ type Week = {
   id: string;
   number: number;
   title: string | null;
-  description: string | null;
   materials: Material[];
 };
 
@@ -28,7 +27,6 @@ type Unit = {
   id: string;
   name: string;
   description: string | null;
-  order: number | null;
   weeks: Week[];
 };
 
@@ -37,19 +35,6 @@ type Subject = {
   name: string;
   color: string | null;
   description: string | null;
-};
-
-type Profile = {
-  id: string;
-  name: string | null;
-  title: string | null;
-  bio: string | null;
-  avatar_url: string | null;
-};
-
-type Setting = {
-  key: string;
-  value: string;
 };
 
 type RawMaterial = {
@@ -65,7 +50,6 @@ type RawWeek = {
   id: string | null | undefined;
   number: number | null | undefined;
   title: string | null | undefined;
-  description: string | null | undefined;
   materials?: RawMaterial[] | null;
 };
 
@@ -73,45 +57,92 @@ type RawUnit = {
   id: string | null | undefined;
   name: string | null | undefined;
   description: string | null | undefined;
-  order: number | null | undefined;
   weeks?: RawWeek[] | null;
 };
 
-function subjectEmoji(name: string): string {
-  const n = name.toLowerCase();
-  if (n.includes('java')) return '☕';
-  if (n.includes('python')) return '🐍';
-  if (n.includes('web') || n.includes('html')) return '💻';
-  if (n.includes('dato') || n.includes('sql') || n.includes('base')) return '🗄️';
-  if (n.includes('red') || n.includes('network')) return '🌐';
-  if (n.includes('matem') || n.includes('calculo') || n.includes('cálculo')) return '📐';
-  if (n.includes('física') || n.includes('fisica')) return '⚛️';
-  if (n.includes('diseño')) return '🎨';
-  if (n.includes('segur')) return '🔒';
-  if (n.includes('intelig') || n.includes('machine')) return '🤖';
-  if (n.includes('algoritm')) return '⚙️';
-  if (n.includes('sistema')) return '🖥️';
-  if (n.includes('proyecto') || n.includes('gestión') || n.includes('gestion')) return '📋';
-  if (n.includes('comunic')) return '📡';
-  return '📖';
+type Setting = {
+  key: string;
+  value: string;
+};
+
+function getMaterialDisplayType(material: Material): string {
+  if (material.source === 'ai') return 'Código';
+  if (material.type === 'pdf') return 'PDF';
+  if (material.type === 'pptx') return 'Presentación';
+  if (material.type === 'doc') return 'Documento';
+  if (material.type === 'video') return 'Video';
+  return 'Enlace';
 }
 
-function withAlpha(color: string, alphaHex: string): string {
-  const value = color.trim();
-  if (/^#[\da-f]{3}$/i.test(value)) {
-    return `#${value[1]}${value[1]}${value[2]}${value[2]}${value[3]}${value[3]}${alphaHex}`;
+function materialMeta(material: Material): string {
+  if (material.source === 'ai') return 'Editor interactivo';
+  if (material.file_url) return 'Archivo disponible';
+  return 'Recurso externo';
+}
+
+function isDownloadableFileType(type: string | null): boolean {
+  return type === 'pdf' || type === 'doc' || type === 'pptx';
+}
+
+function MaterialTypeIcon({ material }: { material: Material }) {
+  if (material.type === 'video') {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-5">
+        <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm-1.75-5.25a.75.75 0 0 1-1.125-.65v-4.2a.75.75 0 0 1 1.125-.65l3.65 2.1a.75.75 0 0 1 0 1.3l-3.65 2.1Z" clipRule="evenodd" />
+      </svg>
+    );
   }
-  if (/^#[\da-f]{6}$/i.test(value)) return `${value}${alphaHex}`;
-  return color;
+
+  if (material.type === 'pdf' || material.type === 'doc' || material.type === 'pptx') {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-5">
+        <path fillRule="evenodd" d="M4.25 2A2.25 2.25 0 0 0 2 4.25v11.5A2.25 2.25 0 0 0 4.25 18h11.5A2.25 2.25 0 0 0 18 15.75V7.56a2.25 2.25 0 0 0-.66-1.59l-3.31-3.31A2.25 2.25 0 0 0 12.44 2H4.25Zm1.5 7.25a.75.75 0 0 1 .75-.75h7a.75.75 0 0 1 0 1.5h-7a.75.75 0 0 1-.75-.75Zm0 3a.75.75 0 0 1 .75-.75h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+      </svg>
+    );
+  }
+
+  if (material.source === 'ai') {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-5">
+        <path fillRule="evenodd" d="M3.75 3A1.75 1.75 0 0 0 2 4.75v10.5C2 16.216 2.784 17 3.75 17h12.5A1.75 1.75 0 0 0 18 15.25V4.75A1.75 1.75 0 0 0 16.25 3H3.75Zm2.5 4.25A.75.75 0 0 1 7 8v4a.75.75 0 0 1-1.5 0V8a.75.75 0 0 1 .75-.75Zm6.75 0a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0V8a.75.75 0 0 1 .75-.75ZM8.75 9a.75.75 0 0 1 .75-.75h1a.75.75 0 0 1 0 1.5h-1A.75.75 0 0 1 8.75 9Zm0 2a.75.75 0 0 1 .75-.75h1a.75.75 0 0 1 0 1.5h-1a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-5">
+      <path fillRule="evenodd" d="M4.25 5A2.25 2.25 0 0 0 2 7.25v8.5A2.25 2.25 0 0 0 4.25 18h8.5A2.25 2.25 0 0 0 15 15.75v-3a.75.75 0 0 0-1.5 0v3a.75.75 0 0 1-.75.75h-8.5a.75.75 0 0 1-.75-.75v-8.5A.75.75 0 0 1 4.25 6.5h3a.75.75 0 0 0 0-1.5h-3ZM11 2.75A.75.75 0 0 1 11.75 2h5.5a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0V4.56l-7.22 7.22a.75.75 0 1 1-1.06-1.06l7.22-7.22h-3.69A.75.75 0 0 1 11 2.75Z" clipRule="evenodd" />
+    </svg>
+  );
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase() ?? '')
-    .join('');
+function MaterialAction({ material }: { material: Material }) {
+  const shouldShowDownloadLabel = isDownloadableFileType(material.type);
+  const label = shouldShowDownloadLabel ? 'Descargar' : 'Ver ›';
+  const href = material.source === 'ai' ? `/materials/${material.id}` : (material.file_url ?? null);
+
+  if (!href) {
+    return <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Sin enlace</span>;
+  }
+
+  if (material.source === 'ai') {
+    return (
+      <Link href={href} className="text-sm font-semibold text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200">
+        {label}
+      </Link>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-sm font-semibold text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200"
+    >
+      {label}
+    </a>
+  );
 }
 
 export default async function PublicSubjectPage({
@@ -122,12 +153,7 @@ export default async function PublicSubjectPage({
   const { id } = await params;
   const supabase = createClient(await cookies());
 
-  const [
-    { data: subject, error: subjectError },
-    { data: units, error: unitsError },
-    { data: settings },
-    { data: profile },
-  ] = await Promise.all([
+  const [{ data: subject, error: subjectError }, { data: units, error: unitsError }, { data: settings }] = await Promise.all([
     supabase.from('subjects').select('*').eq('id', id).single(),
     supabase
       .from('units')
@@ -135,7 +161,6 @@ export default async function PublicSubjectPage({
       .eq('subject_id', id)
       .order('order', { ascending: true }),
     supabase.from('settings').select('key, value').order('key', { ascending: true }),
-    supabase.from('profile').select('id, name, title, bio, avatar_url').limit(1).single(),
   ]);
 
   if (subjectError || !subject) notFound();
@@ -151,12 +176,10 @@ export default async function PublicSubjectPage({
     id: unit.id as string,
     name: unit.name as string,
     description: unit.description as string | null,
-    order: unit.order as number | null,
     weeks: (unit.weeks ?? []).map((week: RawWeek) => ({
       id: week.id as string,
       number: week.number as number,
       title: week.title as string | null,
-      description: week.description as string | null,
       materials: (week.materials ?? []).map((material: RawMaterial) => ({
         id: material.id as string,
         name: material.name as string,
@@ -168,177 +191,109 @@ export default async function PublicSubjectPage({
     })),
   }));
 
-  const teacherProfile: Profile | null = profile
-    ? {
-        id: profile.id as string,
-        name: profile.name as string | null,
-        title: profile.title as string | null,
-        bio: profile.bio as string | null,
-        avatar_url: profile.avatar_url as string | null,
-      }
-    : null;
+  const filteredUnits = unitList
+    .map((unit) => ({
+      ...unit,
+      weeks: unit.weeks
+        .map((week) => ({
+          ...week,
+          materials: week.materials.filter((material) => material.is_published),
+        }))
+        .filter((week) => week.materials.length > 0),
+    }))
+    .filter((unit) => unit.weeks.length > 0);
 
   const normalizedSettings: Setting[] = (settings ?? []).map((setting) => ({
     key: setting.key as string,
     value: setting.value as string,
   }));
 
-  const accentColor = s.color ?? '#1e40af';
-  const emoji = subjectEmoji(s.name);
-
-  const filteredUnits = unitList.map((unit) => ({
-    ...unit,
-    weeks: (unit.weeks ?? [])
-      .map((week) => ({
-        ...week,
-        materials: (week.materials ?? []).filter((material) => material.is_published),
-      }))
-      .filter((week) => week.materials.length > 0),
-  }));
-
-  const publishedUnitCount = filteredUnits.filter((unit) => unit.weeks.length > 0).length;
-  const publishedWeekCount = filteredUnits.reduce((acc, unit) => acc + unit.weeks.length, 0);
-  const publishedMaterialCount = filteredUnits.reduce(
-    (acc, unit) => acc + unit.weeks.reduce((weekAcc, week) => weekAcc + week.materials.length, 0),
-    0
-  );
-
-  const teacherName = teacherProfile?.name ?? null;
+  const accentColor = s.color ?? '#2563eb';
 
   return (
-    <div className="relative overflow-hidden bg-slate-950 text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(124,58,237,0.18),_transparent_30%)]" />
-
-      <header className="relative border-b border-white/10 px-6 py-12 sm:py-16">
-        <div className="pointer-events-none absolute inset-0 opacity-30" style={{ background: `linear-gradient(135deg, ${withAlpha(accentColor, '24')} 0%, rgba(15,23,42,0.1) 55%, rgba(124,58,237,0.22) 100%)` }} />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.1)_1px,transparent_1px)] bg-[size:72px_72px] opacity-20" />
-
-        <div className="relative mx-auto flex max-w-7xl flex-col gap-8">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 font-semibold transition-colors hover:bg-white/10 hover:text-white"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-4">
-                <path fillRule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clipRule="evenodd" />
-              </svg>
-              Volver al catálogo
-            </Link>
-            <span className="text-slate-500">/</span>
-            <span className="truncate font-semibold text-slate-200">{s.name}</span>
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
-            <div className="rounded-[2rem] border border-white/12 bg-white/8 p-6 shadow-2xl shadow-blue-950/20 backdrop-blur-xl sm:p-8">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-slate-200">
-                <span className="text-2xl leading-none">{emoji}</span>
-                Asignatura pública
-              </div>
-              <h1 className="mt-5 max-w-3xl text-4xl font-black leading-none tracking-tight text-white sm:text-5xl lg:text-6xl">
-                {s.name}
-              </h1>
-              {s.description && (
-                <p className="mt-5 max-w-3xl text-base leading-7 text-slate-200 sm:text-lg">{s.description}</p>
-              )}
-              <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                {[
-                  { label: 'Unidades', value: publishedUnitCount },
-                  { label: 'Semanas', value: publishedWeekCount },
-                  { label: 'Materiales', value: publishedMaterialCount },
-                ].map((stat) => (
-                  <div
-                    key={stat.label}
-                    className="rounded-[1.6rem] border border-white/10 bg-slate-950/35 px-5 py-4"
-                    style={{ boxShadow: `0 22px 40px -36px ${accentColor}` }}
-                  >
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">{stat.label}</p>
-                    <p className="mt-2 text-3xl font-black text-white">{stat.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-[2rem] border border-white/12 bg-slate-950/55 p-6 shadow-2xl shadow-blue-950/20 backdrop-blur-xl">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-slate-300">
-                Docente
-              </div>
-              {teacherName ? (
-                <div className="flex h-full flex-col gap-5">
-                  <div className="flex items-center gap-4">
-                    <div
-                      className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-white/10 text-lg font-black text-white shadow-lg"
-                      style={{ background: `linear-gradient(135deg, ${accentColor} 0%, #7c3aed 100%)` }}
-                    >
-                      {teacherProfile?.avatar_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={teacherProfile.avatar_url} alt={teacherName} className="h-full w-full object-cover" />
-                      ) : (
-                        getInitials(teacherName)
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-2xl font-black text-white">{teacherName}</p>
-                      {teacherProfile?.title && <p className="mt-1 text-sm font-semibold text-blue-100">{teacherProfile.title}</p>}
-                    </div>
-                  </div>
-                  {teacherProfile?.bio && <p className="text-sm leading-7 text-slate-300">{teacherProfile.bio}</p>}
-                  <div className="mt-auto rounded-[1.6rem] border border-white/10 bg-white/6 p-4 text-sm text-slate-300">
-                    {publishedMaterialCount > 0
-                      ? 'El contenido visible ya está organizado por semanas para que los estudiantes accedan rápido a cada recurso.'
-                      : 'Aún no hay materiales publicados, pero la estructura del curso ya está lista para activarse.'}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-[1.6rem] border border-dashed border-white/15 bg-white/4 p-5 text-sm leading-7 text-slate-300">
-                  Aún no se ha configurado la información del docente para esta asignatura.
-                </div>
-              )}
-            </div>
+    <div className="space-y-6">
+      <header className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+        <Link href="/" className="mb-5 inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+          ← Volver a inicio
+        </Link>
+        <div className="flex items-start gap-4">
+          <span
+            className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-3xl"
+            style={{ backgroundColor: `${accentColor}20` }}
+          >
+            {subjectEmoji(s.name)}
+          </span>
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100">{s.name}</h1>
+            {s.description && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{s.description}</p>}
           </div>
         </div>
       </header>
 
-      <main className="relative mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10">
-        <section className="rounded-[2rem] border border-white/10 bg-white/6 p-5 backdrop-blur-xl sm:p-6">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Lineamientos</p>
-              <h2 className="mt-2 text-2xl font-black text-white">Políticas y consideraciones del curso</h2>
-            </div>
-            <p className="max-w-2xl text-sm leading-6 text-slate-300">
-              Consulta las políticas generales antes de revisar el contenido semanal para tener claro el marco de trabajo.
-            </p>
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-slate-100">
+          <span>📘</span>
+          Contenido del Curso
+        </h2>
+
+        {unitsError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200">
+            No se pudieron cargar las unidades: {unitsError.message}
           </div>
-          <PoliciesAccordion settings={normalizedSettings} accentColor={accentColor} />
-        </section>
+        )}
 
-        <section className="space-y-5">
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Contenido publicado</p>
-              <h2 className="mt-2 text-2xl font-black text-white">Navega por unidades, semanas y materiales</h2>
-            </div>
-            <p className="max-w-2xl text-sm leading-6 text-slate-300">
-              Usa los filtros para enfocarte en el tipo de recurso que necesitas. El acordeón mantiene la misma lógica y
-              ahora se integra con un contexto visual más claro.
-            </p>
+        {!unitsError && filteredUnits.length === 0 && (
+          <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+            No hay materiales publicados aún.
           </div>
+        )}
 
-          {unitsError && (
-            <div className="rounded-[1.6rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-              No se pudieron cargar las unidades: {unitsError.message}
-            </div>
-          )}
+        <div className="space-y-5">
+          {filteredUnits.map((unit, unitIndex) => (
+            <article key={unit.id} className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+              <header className="border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Unidad {unitIndex + 1}</p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">{unit.name}</h3>
+                {unit.description && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{unit.description}</p>}
+              </header>
 
-          {!unitsError && filteredUnits.length === 0 && (
-            <div className="rounded-[2rem] border border-dashed border-white/15 bg-white/4 px-6 py-24 text-center text-slate-300">
-              <p className="text-lg font-bold text-white">No hay contenido publicado aún.</p>
-            </div>
-          )}
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {unit.weeks.map((week) => (
+                  <div key={week.id} className="p-4">
+                    <p className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      Semana {week.number}
+                      {week.title ? ` · ${week.title}` : ''}
+                    </p>
+                    <ul className="space-y-2">
+                      {week.materials.map((material) => (
+                        <li
+                          key={material.id}
+                          className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+                        >
+                          <span className="text-slate-500 dark:text-slate-300">
+                            <MaterialTypeIcon material={material} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{material.name}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {getMaterialDisplayType(material)} • {materialMeta(material)}
+                            </p>
+                          </div>
+                          <MaterialAction material={material} />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
-          <WeeksAccordion units={filteredUnits} accentColor={accentColor} />
-        </section>
-      </main>
+      <section>
+        <PoliciesAccordion settings={normalizedSettings} accentColor={accentColor} />
+      </section>
     </div>
   );
 }
