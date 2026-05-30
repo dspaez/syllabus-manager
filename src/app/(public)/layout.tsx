@@ -56,58 +56,65 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       <div className="relative flex-1">{children}</div>
 
       <footer className="relative border-t border-white/10 bg-slate-950/88">
-        <div className="mx-auto grid max-w-7xl gap-8 px-6 py-10 text-sm text-slate-300 md:grid-cols-[1.6fr,1fr,1fr]">
-          <div>
-            <div className="mb-4 flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-950/40">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-5 text-white">
-                  <path d="M12 3 1.5 8.25 12 13.5l8.25-4.125v5.08a2.251 2.251 0 1 1-1.5 0v-4.33L12 13.5 3 9v5.25L12 19.5l9-5.25V9.667l1.5-.75V15L12 21 1.5 15V8.25L12 3Z" />
-                </svg>
-              </span>
-              <div>
-                <p className="text-base font-black text-white">Syllabus Manager</p>
-                <p className="text-xs text-slate-400">Plataforma académica</p>
+        <div className="mx-auto max-w-7xl px-6 py-12">
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[2fr,1fr,1fr]">
+            {/* Brand */}
+            <div>
+              <div className="mb-5 flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-950/40">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-5 text-white">
+                    <path d="M12 3 1.5 8.25 12 13.5l8.25-4.125v5.08a2.251 2.251 0 1 1-1.5 0v-4.33L12 13.5 3 9v5.25L12 19.5l9-5.25V9.667l1.5-.75V15L12 21 1.5 15V8.25L12 3Z" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-sm font-black text-white">Syllabus Manager</p>
+                  <p className="text-xs text-slate-400">Plataforma académica</p>
+                </div>
               </div>
+              <p className="text-sm leading-7 text-slate-400">
+                Accede a guías, ejercicios y materiales organizados por asignatura,
+                unidad y semana desde cualquier dispositivo.
+              </p>
             </div>
-            <p className="max-w-md leading-6 text-slate-400">
-              Accede a guías, ejercicios y materiales organizados por asignatura, unidad y semana desde cualquier dispositivo.
-            </p>
-          </div>
 
-          <div>
-            <p className="mb-4 text-xs font-black uppercase tracking-[0.24em] text-slate-500">Navegación</p>
-            <ul className="space-y-3">
-              <li>
-                <Link href="/" className="transition-colors hover:text-white">
-                  Página principal
-                </Link>
-              </li>
-              <li>
-                <Link href="/#subjects" className="transition-colors hover:text-white">
-                  Catálogo de asignaturas
-                </Link>
-              </li>
-            </ul>
-          </div>
+            {/* Nav */}
+            <div>
+              <p className="mb-4 text-xs font-black uppercase tracking-[0.2em] text-slate-500">Navegación</p>
+              <ul className="space-y-3 text-sm text-slate-400">
+                <li>
+                  <Link href="/" className="transition-colors hover:text-white">
+                    Página principal
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/#subjects" className="transition-colors hover:text-white">
+                    Catálogo de asignaturas
+                  </Link>
+                </li>
+              </ul>
+            </div>
 
-          <div>
-            <p className="mb-4 text-xs font-black uppercase tracking-[0.24em] text-slate-500">Gestión</p>
-            <ul className="space-y-3">
-              <li>
-                <Link href="/admin" className="transition-colors hover:text-white">
-                  Panel de administración
-                </Link>
-              </li>
-              <li>
-                <Link href="/login" className="transition-colors hover:text-white">
-                  Iniciar sesión
-                </Link>
-              </li>
-            </ul>
+            {/* Admin */}
+            <div>
+              <p className="mb-4 text-xs font-black uppercase tracking-[0.2em] text-slate-500">Gestión</p>
+              <ul className="space-y-3 text-sm text-slate-400">
+                <li>
+                  <Link href="/admin" className="transition-colors hover:text-white">
+                    Panel de administración
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/login" className="transition-colors hover:text-white">
+                    Iniciar sesión
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
-        <div className="border-t border-white/10 px-6 py-4 text-center text-xs text-slate-500">
-          © 2026 Syllabus Manager · Todos los derechos reservados.
+
+        <div className="border-t border-white/8 px-6 py-5 text-center text-xs text-slate-600">
+          © {new Date().getFullYear()} Syllabus Manager · Todos los derechos reservados.
         </div>
       </footer>
     </div>

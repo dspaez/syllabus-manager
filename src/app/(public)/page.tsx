@@ -72,6 +72,24 @@ function generateTags(name: string): string[] {
     .map((word) => `#${word}`);
 }
 
+const HOW_TO_STEPS = [
+  {
+    title: 'Busca por asignatura',
+    description: 'Usa el buscador para encontrar por nombre, semestre o palabras clave.',
+    accent: 'from-blue-600 to-blue-500',
+  },
+  {
+    title: 'Identifica el semestre',
+    description: 'Cada asignatura muestra el período académico y su color distintivo.',
+    accent: 'from-violet-600 to-violet-500',
+  },
+  {
+    title: 'Entra a los contenidos',
+    description: 'Accede a semanas, políticas y materiales desde un solo flujo de navegación.',
+    accent: 'from-emerald-600 to-emerald-500',
+  },
+];
+
 export default function PublicHomePage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -212,14 +230,35 @@ export default function PublicHomePage() {
         </div>
       </section>
 
+      {/* How to navigate */}
+      <section className="relative border-b border-white/10 bg-slate-950/65 px-6 py-12">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-8">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Cómo navegar</p>
+            <h2 className="mt-2 text-2xl font-black text-white">Un flujo simple para encontrar cada recurso</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {HOW_TO_STEPS.map((step, index) => (
+              <div key={step.title} className="rounded-[1.8rem] border border-white/10 bg-white/6 p-6 backdrop-blur-xl">
+                <div className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br ${step.accent} text-sm font-black text-white`}>
+                  0{index + 1}
+                </div>
+                <h3 className="text-base font-black text-white">{step.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-400">{step.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Subjects grid */}
-      <section id="subjects" className="mx-auto w-full max-w-7xl flex-1 px-6 py-14 text-slate-900">
+      <section id="subjects" className="mx-auto w-full max-w-7xl flex-1 px-6 py-14">
         <div className="mb-8 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Catálogo público</p>
             <h2 className="mt-2 text-3xl font-black tracking-tight text-white">Asignaturas del semestre</h2>
             {!loading && (
-              <p className="mt-2 text-sm text-slate-300">
+              <p className="mt-2 text-sm text-slate-400">
                 {filtered.length} {filtered.length === 1 ? 'asignatura disponible' : 'asignaturas disponibles'} para explorar.
               </p>
             )}
@@ -230,7 +269,7 @@ export default function PublicHomePage() {
         {loading && (
           <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {[...Array(8)].map((_, index) => (
-              <li key={`skeleton-${index}`} className="overflow-hidden rounded-[1.9rem] border border-white/10 bg-white/8 animate-pulse">
+              <li key={`skeleton-${index}`} className="animate-pulse overflow-hidden rounded-[1.9rem] border border-white/10 bg-white/8">
                 <div className="h-48 bg-white/10" />
                 <div className="space-y-3 p-6">
                   <div className="h-4 w-1/2 rounded bg-white/10" />
@@ -286,7 +325,7 @@ export default function PublicHomePage() {
                     >
                       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.16)_1px,transparent_1px)] bg-[size:28px_28px] opacity-30" />
                       <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/15 blur-2xl" />
-                      <div className="relative flex items-start justify-between gap-4">
+                      <div className="relative">
                         <span className="inline-flex items-center rounded-full border border-white/20 bg-black/10 px-3 py-1 text-xs font-bold text-white/90 backdrop-blur-sm">
                           {subject.semesterName ?? 'Sin semestre'}
                         </span>
@@ -302,7 +341,7 @@ export default function PublicHomePage() {
                       {subject.description ? (
                         <p className="line-clamp-3 flex-1 text-sm leading-7 text-slate-600">{subject.description}</p>
                       ) : (
-                        <p className="flex-1 text-sm italic leading-7 text-slate-400">Sin descripción.</p>
+                        <p className="flex-1 text-sm italic leading-7 text-slate-400">Sin descripción disponible.</p>
                       )}
 
                       {tags.length > 0 && (
