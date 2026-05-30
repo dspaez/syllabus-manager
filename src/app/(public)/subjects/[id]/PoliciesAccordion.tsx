@@ -61,26 +61,26 @@ export default function PoliciesAccordion({ settings, accentColor }: { settings:
     if (settings.length === 0) return null;
 
     return (
-        <section className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             {/* Toggle header */}
             <button
                 onClick={() => setOpen((v) => !v)}
-                className="w-full flex items-center gap-3 px-6 py-5 hover:bg-gray-50 transition-colors text-left"
+                className="flex w-full items-center gap-3 px-6 py-5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/70"
                 aria-expanded={open}
             >
                 {/* Book icon */}
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                    className="size-5 shrink-0 text-gray-500">
+                    className="size-5 shrink-0 text-slate-500 dark:text-slate-300">
                     <path d="M10.75 16.82A7.462 7.462 0 0 1 15 15.5c.71 0 1.396.098 2.046.282A.75.75 0 0 0 18 15.06v-11a.75.75 0 0 0-.546-.721A9.006 9.006 0 0 0 15 3a8.963 8.963 0 0 0-4.25 1.065V16.82ZM9.25 4.065A8.963 8.963 0 0 0 5 3c-.85 0-1.673.118-2.454.339A.75.75 0 0 0 2 4.06v11a.75.75 0 0 0 .954.721A7.506 7.506 0 0 1 5 15.5c1.579 0 3.042.487 4.25 1.32V4.065Z" />
                 </svg>
-                <span className="flex-1 text-base font-semibold text-gray-900">
+                <span className="flex-1 text-base font-semibold text-slate-900 dark:text-slate-100">
                     Consideraciones Generales
                 </span>
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
                     fill="currentColor"
-                    className={`size-5 shrink-0 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+                    className={`size-5 shrink-0 text-slate-400 transition-transform duration-200 dark:text-slate-500 ${open ? 'rotate-180' : ''}`}
                 >
                     <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
                 </svg>
@@ -91,23 +91,23 @@ export default function PoliciesAccordion({ settings, accentColor }: { settings:
                 className="overflow-hidden transition-all duration-300"
                 style={{ maxHeight: open ? '2000px' : '0px' }}
             >
-                <div className="border-t border-gray-100 px-6 py-5 grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 border-t border-slate-200 px-6 py-5 sm:grid-cols-2 dark:border-slate-800">
                     {settings.map((s) => {
                         const meta = KEY_LABELS[s.key];
                         const borderColor = meta?.borderColor ?? (accentColor ?? '#94a3b8');
                         return (
                             <div
                                 key={s.key}
-                                className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-4 overflow-hidden"
+                                className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-800/70"
                                 style={{ borderLeft: `3px solid ${borderColor}` }}
                             >
                                 <div className="flex items-center gap-2 mb-2" style={{ color: borderColor }}>
                                     {meta?.icon}
-                                    <p className="text-sm font-semibold text-gray-800">
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                                         {meta?.label ?? s.key}
                                     </p>
                                 </div>
-                                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                                <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                                     {s.value}
                                 </p>
                             </div>
