@@ -128,13 +128,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
                 {/* Brand */}
                 <div className="px-6 py-6 border-b border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-start gap-3">
                         <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-xl leading-none text-white shadow-sm shadow-blue-200/80 dark:shadow-blue-950/40">🎓</span>
-                        <span className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-                            Gestor Académico
-                        </span>
+                        <div>
+                            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                                Gestor Académico
+                            </h2>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Panel Admin</p>
+                        </div>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 pl-[3.25rem] mt-1">Panel Admin</p>
                     <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                         <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                         Semestre activo: {activeSemester ?? NO_ACTIVE_SEMESTER}
