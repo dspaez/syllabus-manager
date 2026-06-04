@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import ThemeToggle from '@/components/ThemeToggle';
 
 // ── SVG Icons ────────────────────────────────────────────────────────────────
 
@@ -121,31 +122,30 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     const initial = email ? email[0].toUpperCase() : '?';
 
     return (
-        <div className="flex min-h-screen bg-slate-100">
+        <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
             {/* Sidebar */}
-            <aside className="w-72 shrink-0 bg-slate-950 text-white flex flex-col border-r border-slate-900/80 shadow-2xl shadow-blue-950/20">
+            <aside className="w-72 shrink-0 bg-white dark:bg-slate-900 flex flex-col border-r border-slate-200 dark:border-slate-700">
 
-                {/* Brand — gradient header */}
-                <div
-                    className="px-6 py-6 border-b border-white/10"
-                    style={{ background: 'linear-gradient(145deg, #0f172a 0%, #1e40af 55%, #7c3aed 100%)' }}
-                >
-                    <div className="flex items-center gap-3 mb-2">
-                        <span className="text-3xl leading-none">🎓</span>
-                        <span className="text-base font-bold text-white tracking-tight">
-                            Gestor Académico
-                        </span>
+                {/* Brand */}
+                <div className="px-6 py-6 border-b border-slate-200 dark:border-slate-700">
+                    <div className="flex items-start gap-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-xl leading-none text-white shadow-sm shadow-blue-200/80 dark:shadow-blue-950/40">🎓</span>
+                        <div>
+                            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                                Gestor Académico
+                            </h2>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Panel Admin</p>
+                        </div>
                     </div>
-                    <p className="text-xs text-blue-100/90 pl-10">Panel Admin</p>
-                    <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
-                        <span className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
+                    <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                         Semestre activo: {activeSemester ?? NO_ACTIVE_SEMESTER}
                     </div>
                 </div>
 
                 {/* Navigation */}
                 <nav className="flex-1 px-4 py-5 space-y-1.5">
-                    <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                    <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                         Menú
                     </p>
                     {navLinks.map(({ href, label, icon: Icon }) => {
@@ -156,12 +156,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                                 href={href}
                                 title={label}
                                 className={`group flex items-center gap-3 px-3 py-3 rounded-2xl text-sm font-medium transition-all duration-200 relative ${isActive
-                                        ? 'bg-gradient-to-r from-blue-500/30 to-violet-500/30 text-white shadow-lg shadow-blue-900/20'
-                                        : 'text-slate-200/90 hover:bg-white/10 hover:text-white hover:translate-x-0.5'
+                                        ? 'bg-blue-50 text-blue-700 shadow-sm shadow-blue-100/80 dark:bg-blue-500/15 dark:text-blue-200 dark:shadow-none'
+                                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:translate-x-0.5 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'
                                     }`}
                             >
                                 {isActive && (
-                                    <span className="absolute left-0 top-2.5 bottom-2.5 w-1 bg-emerald-300 rounded-r-full" />
+                                    <span className="absolute left-0 top-2.5 bottom-2.5 w-1 bg-blue-500 rounded-r-full dark:bg-blue-400" />
                                 )}
                                 <Icon className={`size-6 shrink-0 transition-transform ${isActive ? '' : 'group-hover:scale-110'}`} />
                                 {label}
@@ -170,12 +170,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     })}
 
                     <div className="pt-6">
-                        <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                        <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                             Acceso rápido
                         </p>
                         <div className="space-y-1.5">
                             {recentSubjects.length === 0 && (
-                                <p className="px-3 text-xs text-slate-400">
+                                <p className="px-3 text-xs text-slate-400 dark:text-slate-500">
                                     Sin asignaturas recientes
                                 </p>
                             )}
@@ -183,14 +183,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                                 <Link
                                     key={subject.id}
                                     href={`/admin/subjects/${subject.id}`}
-                                    className="group flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-200 hover:bg-white/10 hover:text-white transition-colors"
+                                    className="group flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                                 >
                                     <span
                                         className="h-2.5 w-2.5 rounded-full shadow-sm"
                                         style={{ backgroundColor: subject.color ?? '#7c3aed' }}
                                     />
                                     <span className="truncate">{subject.name}</span>
-                                    <span className="ml-auto text-[10px] text-slate-400 group-hover:text-slate-200 transition-colors">↗</span>
+                                    <span className="ml-auto text-[10px] text-slate-400 group-hover:text-slate-700 transition-colors dark:text-slate-500 dark:group-hover:text-slate-300">↗</span>
                                 </Link>
                             ))}
                         </div>
@@ -198,8 +198,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 </nav>
 
                 {/* User + sign out */}
-                <div className="px-4 py-4 border-t border-white/10">
-                    <div className="flex items-center gap-3 px-3 py-3 mb-2 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md">
+                <div className="px-4 py-4 border-t border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-3 px-3 py-3 mb-2 rounded-2xl bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
                         <span
                             className="shrink-0 h-11 w-11 rounded-2xl flex items-center justify-center text-white text-sm font-black shadow-lg"
                             style={{ background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 60%, #22c55e 100%)' }}
@@ -207,13 +207,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                             {initial}
                         </span>
                         <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold text-white truncate">{email ?? '…'}</p>
-                            <p className="text-xs text-slate-300">Administrador</p>
+                            <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{email ?? '…'}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Administrador</p>
                         </div>
                     </div>
                     <button
                         onClick={handleSignOut}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-red-500/15 hover:text-red-200 transition-colors"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-500/10"
                     >
                         <ArrowRightOnRectangleIcon className="size-5 shrink-0" />
                         Cerrar sesión
@@ -224,33 +224,34 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             {/* Right column */}
             <div className="flex flex-col flex-1 min-w-0">
                 {/* Top header */}
-                <header className="h-20 shrink-0 border-b border-slate-200/80 bg-white/85 backdrop-blur-md flex items-center px-8 gap-3 shadow-sm shadow-slate-300/20">
+                <header className="h-20 shrink-0 border-b border-slate-200/80 dark:border-slate-800 bg-white/85 dark:bg-slate-950/80 backdrop-blur-md flex items-center px-8 gap-3 shadow-sm shadow-slate-300/20 dark:shadow-none">
                     <div className="flex-1">
-                        <p className="text-xs text-slate-400">Panel de administración</p>
-                        <h1 className="text-lg font-black text-slate-900 leading-tight tracking-tight">
+                        <p className="text-xs text-slate-400 dark:text-slate-500">Panel de administración</p>
+                        <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight tracking-tight">
                             {sectionTitle(pathname)}
                         </h1>
                     </div>
                     <div className="hidden lg:flex items-center gap-2">
                         <Link
                             href="/admin/subjects/new"
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-700 to-violet-700 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-blue-200 hover:shadow-lg transition-shadow"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-700 to-violet-700 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-blue-200 dark:shadow-blue-950/40 hover:shadow-lg transition-shadow"
                         >
                             + Asignatura
                         </Link>
                         <Link
                             href="/admin/semesters/new"
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-blue-300 dark:hover:border-blue-500/60 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                         >
                             + Semestre
                         </Link>
                     </div>
+                    <ThemeToggle />
                     {/* View public site button */}
                     <Link
                         href="/"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 border border-slate-200 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 px-3 py-2 rounded-xl transition-colors"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500/60 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 px-3 py-2 rounded-xl transition-colors"
                     >
                         Ver sitio público
                         <ArrowTopRightOnSquareIcon className="size-3.5" />
@@ -258,7 +259,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 </header>
 
                 {/* Page content */}
-                <main className="flex-1 overflow-y-auto">
+                <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
                     {children}
                 </main>
             </div>
