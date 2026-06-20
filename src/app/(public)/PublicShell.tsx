@@ -1,122 +1,87 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { type ReactNode } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
-import { subjectEmoji } from '@/utils/subjectEmoji';
 
-type SubjectNavItem = {
-  id: string;
-  name: string;
-  color: string | null;
-};
-
-function isSubjectRoute(pathname: string, subjectId: string): boolean {
-  return pathname === `/subjects/${subjectId}`;
-}
-
-export default function PublicShell({
-  children,
-  subjects,
-}: {
-  children: ReactNode;
-  subjects: SubjectNavItem[];
-}) {
+export default function PublicShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isHome = pathname === '/';
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-slate-200 bg-slate-100/90 px-4 py-5 shadow-sm transition-transform dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Link href="/" className="mb-8 flex items-center gap-3 rounded-xl px-2 py-1">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-white">
-            📚
-          </span>
-          <span className="text-lg font-black text-blue-700 dark:text-blue-300">AulaVirtual</span>
-        </Link>
+    <div className="flex flex-col bg-slate-50 dark:bg-slate-950">
 
-        <nav className="space-y-6 overflow-y-auto">
-          <div>
-            <Link
-              href="/"
-              onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                pathname === '/'
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200'
-                  : 'text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800'
-              }`}
-            >
-              <span>🏠</span>
-              Inicio
+      {/* ── Topbar ── */}
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/90">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-6 sm:px-10">
+
+          {/* Left: logo + optional breadcrumb */}
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2.5 shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0f2a5e]">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="size-4">
+                  <path d="M11.25 4.533A9.707 9.707 0 0 0 6 3a9.735 9.735 0 0 0-3.25.555.75.75 0 0 0-.5.707v14.25a.75.75 0 0 0 1 .707A8.237 8.237 0 0 1 6 18.75c1.995 0 3.823.707 5.25 1.886V4.533ZM12.75 20.636A8.214 8.214 0 0 1 18 18.75c.966 0 1.89.166 2.75.47a.75.75 0 0 0 1-.708V4.262a.75.75 0 0 0-.5-.707A9.735 9.735 0 0 0 18 3a9.707 9.707 0 0 0-5.25 1.533v16.103Z" />
+                </svg>
+              </div>
+              <span className="font-black text-sm tracking-tight text-slate-900 dark:text-slate-100">
+                AulaVirtual
+              </span>
             </Link>
+
+            {/* Breadcrumb separator — only on subject pages */}
+            {!isHome && (
+              <>
+                <span className="text-slate-300 dark:text-slate-700 select-none">/</span>
+                <Link
+                  href="/"
+                  className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-3.5">
+                    <path fillRule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clipRule="evenodd" />
+                  </svg>
+                  Mis asignaturas
+                </Link>
+              </>
+            )}
           </div>
 
-          <div>
-            <p className="mb-2 px-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
-              Mis asignaturas
-            </p>
-            <ul className="space-y-1">
-              {subjects.map((subject) => {
-                const isActive = isSubjectRoute(pathname, subject.id);
-                return (
-                  <li key={subject.id}>
-                    <Link
-                      href={`/subjects/${subject.id}`}
-                      onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
-                        isActive
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200'
-                          : 'text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <span className="text-base">{subjectEmoji(subject.name)}</span>
-                      <span className="truncate">{subject.name}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </nav>
-      </aside>
-
-      {sidebarOpen && (
-        <button
-          type="button"
-          className="fixed inset-0 z-30 bg-slate-900/40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-label="Cerrar menú lateral"
-        />
-      )}
-
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen((current) => !current)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 lg:hidden dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-            aria-label="Abrir menú lateral"
-          >
-            ☰
-          </button>
-
-          <div className="ml-auto flex items-center gap-3">
+          {/* Right: theme toggle + user chip */}
+          <div className="flex items-center gap-2">
             <ThemeToggle />
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white">E</span>
-              Hola, Estudiante
-            </span>
+            <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800/60">
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-700 text-[9px] font-bold text-white">
+                E
+              </div>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 hidden sm:block">
+                Hola, Estudiante
+              </span>
+            </div>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <main className="min-w-0 flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
+      {/* ── Main content ── */}
+      <main className="flex-1 mx-auto max-w-7xl px-6 py-8 sm:px-10 sm:py-10">
+        {children}
+      </main>
+
+      {/* ── Footer institucional ── */}
+      <footer className="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+        <div className="mx-auto max-w-7xl flex items-center justify-between px-6 py-4 sm:px-10">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded bg-[#0f2a5e]">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="size-3">
+                <path d="M11.25 4.533A9.707 9.707 0 0 0 6 3a9.735 9.735 0 0 0-3.25.555.75.75 0 0 0-.5.707v14.25a.75.75 0 0 0 1 .707A8.237 8.237 0 0 1 6 18.75c1.995 0 3.823.707 5.25 1.886V4.533ZM12.75 20.636A8.214 8.214 0 0 1 18 18.75c.966 0 1.89.166 2.75.47a.75.75 0 0 0 1-.708V4.262a.75.75 0 0 0-.5-.707A9.735 9.735 0 0 0 18 3a9.707 9.707 0 0 0-5.25 1.533v16.103Z" />
+              </svg>
+            </div>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">AulaVirtual</span>
+          </div>
+          <p className="text-xs text-slate-400 dark:text-slate-600">
+            Portal estudiantil · {new Date().getFullYear()}
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

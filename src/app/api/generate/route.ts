@@ -6,29 +6,20 @@ const PROMPTS: Record<string, (topic: string) => string> = {
         `Eres un docente universitario experto. Genera una presentación académica COMPLETA sobre ${topic} para estudiantes universitarios de tecnología. ` +
         `\n\nREGLAS IMPORTANTES:\n` +
         `- NO uses markdown (**negrita**, *itálica*) en ningún punto\n` +
-        `- Escribe todo en español\n` +
         `- Cada punto debe ser una explicación completa de 1-2 líneas\n` +
         `- Incluye conceptos técnicos precisos con terminología correcta\n` +
         `- Agrega ejemplos concretos y casos de uso reales\n` +
         `- El contenido debe ser de nivel universitario, no básico\n` +
-        `\nGenera entre 10 y 12 slides (según la complejidad del tema) y usa layouts variados.\n` +
-        `\nReglas de layout por slide:\n` +
-        `- Slide 1 SIEMPRE debe tener "layout": "title" y puntos introductorios\n` +
-        `- Usa "layout": "two-column" en slides conceptuales de comparación (ej: IA vs ML, ventajas vs desventajas)\n` +
-        `- Usa "layout": "code" en slides con ejemplos de código (Python o pseudocódigo)\n` +
-        `- El resto de slides usa "layout": "list"\n` +
-        `- Si usas "two-column", incluye: leftTitle, rightTitle, left (array), right (array)\n` +
-        `- Si usas "code", incluye: points (máximo 3), code (código real y funcional) y language\n` +
-        `- Si usas "list" o "title", incluye points con máximo 5 elementos\n` +
-        `- Todas las slides deben incluir keyword\n` +
-        `\nResponde SOLO en JSON sin markdown ni bloques de código con esta estructura exacta de ejemplo: ` +
-        `{ "slides": [` +
-        `{ "title": "", "points": [], "keyword": "", "layout": "title" },` +
-        `{ "title": "", "points": [], "keyword": "", "layout": "list" },` +
-        `{ "title": "", "left": [], "right": [], "leftTitle": "", "rightTitle": "", "keyword": "", "layout": "two-column" },` +
-        `{ "title": "", "points": [], "code": "", "language": "python", "keyword": "", "layout": "code" }` +
-        `] }` +
-        `\nAsegúrate de alternar layouts de forma pedagógica según el contenido de cada slide.`,
+        `\nGenera entre 12 y 15 slides con esta estructura:\n` +
+        `1. Introducción y contexto del tema\n` +
+        `2. Objetivos de aprendizaje (qué sabrá el estudiante al finalizar)\n` +
+        `3-12. Contenido técnico progresivo con ejemplos y aplicaciones\n` +
+        `13. Caso práctico o ejercicio aplicado\n` +
+        `14. Resumen y conclusiones\n` +
+        `15. Referencias y recursos adicionales\n` +
+        `\nCada slide: máximo 5 puntos, cada punto máximo 2 líneas, sin markdown, con terminología técnica precisa. ` +
+        `Responde SOLO en JSON sin markdown ni bloques de código: ` +
+        `{ "slides": [{ "title": "", "points": [], "keyword": "" }] }`,
     exercises: (topic) =>
         `Genera 5 ejercicios prácticos sobre ${topic}. Cada ejercicio con: ` +
         `enunciado, pistas y solución. Responde en español en formato JSON: ` +
@@ -38,66 +29,6 @@ const PROMPTS: Record<string, (topic: string) => string> = {
         `conceptos clave, ejemplos y resumen. Responde en español en formato JSON: ` +
         `{ "introduction": "", "concepts": [{ "name": "", "explanation": "" }], "examples": [], "summary": "" }`,
 };
-
-const SLIDES_MAX_TOKENS = 16384;
-const DEFAULT_MAX_TOKENS = 8192;
-
-function repairJSON(str: string): unknown {
-    // Strategy 1: find last `}]` and close the outer object
-    const idx1 = str.lastIndexOf('}]');
-    if (idx1 > 0) {
-        try {
-            return JSON.parse(str.substring(0, idx1 + 2) + '}');
-        } catch {
-            // fall through to next strategy
-        }
-    }
-
-    // Strategy 2: find last `}` and try appending `]}` or nothing
-    const idx2 = str.lastIndexOf('}');
-    if (idx2 > 0) {
-        try {
-            return JSON.parse(str.substring(0, idx2 + 1) + ']}');
-        } catch {
-            // ignore
-        }
-        try {
-            return JSON.parse(str.substring(0, idx2 + 1));
-        } catch {
-            // fall through to next strategy
-        }
-    }
-
-    // Strategy 3: walk the string extracting complete top-level slide objects by brace depth
-    // and rebuild {"slides":[...]} manually
-    const slidesStart = str.indexOf('"slides"');
-    if (slidesStart !== -1) {
-        const arrayStart = str.indexOf('[', slidesStart);
-        if (arrayStart !== -1) {
-            const objects: string[] = [];
-            let depth = 0;
-            let objStart = -1;
-            for (let i = arrayStart + 1; i < str.length; i++) {
-                const ch = str[i];
-                if (ch === '{') {
-                    if (depth === 0) objStart = i;
-                    depth++;
-                } else if (ch === '}') {
-                    depth--;
-                    if (depth === 0 && objStart !== -1) {
-                        objects.push(str.substring(objStart, i + 1));
-                        objStart = -1;
-                    }
-                }
-            }
-            if (objects.length > 0) {
-                return JSON.parse(`{"slides":[${objects.join(',')}]}`);
-            }
-        }
-    }
-
-    throw new Error('Unable to repair malformed JSON response after attempting all recovery strategies');
-}
 
 export async function POST(request: NextRequest) {
     try {
@@ -147,7 +78,14 @@ export async function POST(request: NextRequest) {
             try {
                 parsed = JSON.parse(jsonStr);
             } catch {
-                parsed = repairJSON(jsonStr);
+                // Truncar en el último objeto completo
+                const lastValidIndex = jsonStr.lastIndexOf('}]');
+                if (lastValidIndex > 0) {
+                    jsonStr = jsonStr.substring(0, lastValidIndex + 2) + '}';
+                    parsed = JSON.parse(jsonStr);
+                } else {
+                    throw new Error('JSON inválido');
+                }
             }
             return NextResponse.json(parsed);
         }
@@ -159,7 +97,7 @@ export async function POST(request: NextRequest) {
 
         const model = genAI.getGenerativeModel({ 
             model: 'gemini-2.5-flash',
-            generationConfig: { maxOutputTokens: type === 'slides' ? SLIDES_MAX_TOKENS : DEFAULT_MAX_TOKENS }
+            generationConfig: { maxOutputTokens: 8192 }
         });
 
         const result = await model.generateContent(promptFn(topic));
@@ -174,7 +112,14 @@ export async function POST(request: NextRequest) {
         try {
             parsed = JSON.parse(jsonStr);
         } catch {
-            parsed = repairJSON(jsonStr);
+            // Truncar en el último objeto completo
+            const lastValidIndex = jsonStr.lastIndexOf('}]');
+            if (lastValidIndex > 0) {
+                jsonStr = jsonStr.substring(0, lastValidIndex + 2) + '}';
+                parsed = JSON.parse(jsonStr);
+            } else {
+                throw new Error('JSON inválido');
+            }
         }
 
         return NextResponse.json(parsed);

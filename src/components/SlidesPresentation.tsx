@@ -64,19 +64,42 @@ function darkenColor(hex: string, percent: number): string {
     return rgbToHex(rgb.r * factor, rgb.g * factor, rgb.b * factor);
 }
 
+function mixWithBlack(hex: string, amount: number): string {
+    // amount: 0 = original, 1 = pure black
+    const rgb = hexToRgb(hex);
+    if (!rgb) return hex;
+    return rgbToHex(
+        rgb.r * (1 - amount),
+        rgb.g * (1 - amount),
+        rgb.b * (1 - amount),
+    );
+}
+
+function mixWithWhite(hex: string, amount: number): string {
+    // amount: 0 = original, 1 = pure white
+    const rgb = hexToRgb(hex);
+    if (!rgb) return hex;
+    return rgbToHex(
+        rgb.r + (255 - rgb.r) * amount,
+        rgb.g + (255 - rgb.g) * amount,
+        rgb.b + (255 - rgb.b) * amount,
+    );
+}
+
 function adjustColor(
     baseColor: string,
     slideIndex: number,
 ): { from: string; to: string; accent: string } {
-    const basePercent = 80;
-    const variance = (slideIndex % 3) * 3;
-    const fromPercent = basePercent + variance;
-    const toPercent = 95;
+    // Use the actual subject color instead of near-black
+    // Title slides: a bit darker version of the subject color
+    // Content slides: rotate slightly between two dark-but-colored variants
+    const variants = [0.45, 0.52, 0.48];
+    const darkAmount = variants[slideIndex % variants.length];
 
     return {
-        from: darkenColor(baseColor, fromPercent),
-        to: darkenColor(baseColor, toPercent),
-        accent: '#60a5fa',
+        from: mixWithBlack(baseColor, darkAmount),
+        to: mixWithBlack(baseColor, darkAmount + 0.12),
+        accent: mixWithWhite(baseColor, 0.55),
     };
 }
 
@@ -490,12 +513,9 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
         slides.forEach((slide, index) => {
             const layout = resolveLayout(slide.layout);
             const theme = adjustColor(subjectColor, index);
-            const bgColor = layout === 'title'
-                ? darkenColor(subjectColor, 55)
-                : darkenColor(subjectColor, 80 + (index % 3) * 3);
-            const bgColorTo = layout === 'title'
-                ? darkenColor(subjectColor, 82)
-                : darkenColor(subjectColor, 95);
+            const printTheme = adjustColor(subjectColor, index);
+            const bgColor = printTheme.from;
+            const bgColorTo = printTheme.to;
 
             const page = document.createElement('div');
             page.className = 'slide-print-page';
@@ -612,7 +632,7 @@ export default function SlidesPresentation({ slides, name, subjectColor = '#185F
                 style={{
                     background:
                         activeLayout === 'title'
-                            ? `linear-gradient(135deg, ${darkenColor(subjectColor, 55)} 0%, ${darkenColor(subjectColor, 82)} 100%)`
+                            ? `linear-gradient(135deg, ${theme.from} 0%, ${theme.to} 100%)`
                             : `linear-gradient(135deg, ${theme.from} 0%, ${theme.to} 100%)`,
                 }}
             >
