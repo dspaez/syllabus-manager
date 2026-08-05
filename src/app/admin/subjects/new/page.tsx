@@ -12,7 +12,10 @@ export default function NewSubjectPage() {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [color, setColor] = useState('#185FA5');
+    const [accentColor, setAccentColor] = useState('#3B82F6');
     const [semesterId, setSemesterId] = useState('');
+    const [courseMode, setCourseMode] = useState<'project' | 'topics'>('topics');
+    const [techStack, setTechStack] = useState('');
     const [semesters, setSemesters] = useState<Semester[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -39,7 +42,10 @@ export default function NewSubjectPage() {
             name,
             description: description || null,
             color,
+            accent_color: accentColor,
             semester_id: semesterId || null,
+            course_mode: courseMode,
+            tech_stack: techStack.trim() || null,
         });
 
         if (error) {
@@ -126,6 +132,61 @@ export default function NewSubjectPage() {
                             ))}
                         </select>
                     </div>
+                </div>
+
+                {/* Tipo de materia + Stack */}
+                <div>
+                    <label htmlFor="courseMode" className="block text-sm font-medium text-gray-700 mb-1">
+                        Tipo de materia
+                    </label>
+                    <select
+                        id="courseMode"
+                        value={courseMode}
+                        onChange={(e) => setCourseMode(e.target.value as 'project' | 'topics')}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                        <option value="topics">Temas con ejercicios</option>
+                        <option value="project">Proyecto progresivo</option>
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                        &ldquo;Proyecto progresivo&rdquo; habilita el documento técnico evolutivo del proyecto.
+                    </p>
+                </div>
+
+                <div>
+                    <label htmlFor="accentColor" className="block text-sm font-medium text-gray-700 mb-1">
+                        Color de acento (Class Kit)
+                    </label>
+                    <div className="flex items-center gap-2">
+                        <input
+                            id="accentColor"
+                            type="color"
+                            value={accentColor}
+                            onChange={(e) => setAccentColor(e.target.value)}
+                            className="h-9 w-12 cursor-pointer rounded border border-gray-300 p-0.5"
+                        />
+                        <span className="text-xs text-gray-500 font-mono">{accentColor}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                        Color protagonista de la portada y los tags al generar un Class Kit. Los colores por tipo de slide (problema, solución, etc.) son fijos.
+                    </p>
+                </div>
+
+                <div>
+                    <label htmlFor="techStack" className="block text-sm font-medium text-gray-700 mb-1">
+                        Stack tecnológico
+                    </label>
+                    <input
+                        id="techStack"
+                        type="text"
+                        value={techStack}
+                        onChange={(e) => setTechStack(e.target.value)}
+                        placeholder='Ej. "Python 3.11", "Java 17", "Next.js + Supabase"'
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                        Se usa como contexto al generar contenido con IA.
+                    </p>
                 </div>
 
                 {/* Error */}

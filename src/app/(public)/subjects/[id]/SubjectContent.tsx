@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useMemo, useCallback } from 'react';
+import { getMaterialBadge } from '@/lib/materialBadge';
 
 type Material = {
   id: string;
@@ -41,12 +42,15 @@ function withAlpha(color: string, alphaHex: string): string {
 
 function getMaterialMeta(material: Material) {
   const isAI = material.source === 'ai';
-  if (isAI) return { label: 'Slides IA', bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0', action: 'Abrir' };
-  if (material.type === 'pdf') return { label: 'PDF', bg: '#fef2f2', color: '#b91c1c', border: '#fecaca', action: 'Descargar' };
-  if (material.type === 'pptx') return { label: 'PPTX', bg: '#f5f3ff', color: '#6d28d9', border: '#ddd6fe', action: 'Descargar' };
-  if (material.type === 'doc') return { label: 'DOC', bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe', action: 'Descargar' };
-  if (material.type === 'video') return { label: 'Video', bg: '#fff7ed', color: '#c2410c', border: '#fed7aa', action: 'Ver' };
-  return { label: 'Recurso', bg: '#f8fafc', color: '#475569', border: '#e2e8f0', action: 'Abrir' };
+  const badge = getMaterialBadge({ type: material.type, source: material.source, fileUrl: material.file_url });
+  // La acción es independiente de la etiqueta: los materiales "ai" siempre abren el visor
+  // interno (/materials/[id]) sin importar si por dentro es un archivo real o contenido JSON.
+  let action = 'Abrir';
+  if (!isAI) {
+    if (material.type === 'video') action = 'Ver';
+    else if (material.type === 'pdf' || material.type === 'pptx' || material.type === 'doc') action = 'Descargar';
+  }
+  return { ...badge, action };
 }
 
 function getMaterialIcon(material: Material, accentColor: string) {

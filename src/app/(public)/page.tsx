@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { subjectEmoji } from '@/utils/subjectEmoji';
+import { getMaterialBadge, type MaterialBadge } from '@/lib/materialBadge';
 
 type Material = {
   id: string;
   name: string;
   type: string | null;
   source: string | null;
+  file_url: string | null;
   is_published: boolean;
 };
 
@@ -27,7 +29,7 @@ type Subject = {
   description: string | null;
   totalWeeks: number;
   totalMaterials: number;
-  materialTypes: string[];
+  materialTypes: MaterialBadge[];
 };
 
 const FALLBACK_COLORS = ['#2563eb', '#7c3aed', '#0ea5e9', '#6366f1', '#9333ea', '#06b6d4'];
@@ -43,15 +45,6 @@ function withAlpha(color: string, alphaHex: string): string {
   }
   if (/^#[\da-f]{6}$/i.test(value)) return `${value}${alphaHex}`;
   return color;
-}
-
-function getMaterialTypePill(type: string) {
-  if (type === 'ai') return { label: 'Slides IA', bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0' };
-  if (type === 'pdf') return { label: 'PDF', bg: '#fef2f2', color: '#b91c1c', border: '#fecaca' };
-  if (type === 'pptx') return { label: 'PPTX', bg: '#f5f3ff', color: '#6d28d9', border: '#ddd6fe' };
-  if (type === 'doc') return { label: 'DOC', bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' };
-  if (type === 'video') return { label: 'Video', bg: '#fff7ed', color: '#c2410c', border: '#fed7aa' };
-  return { label: 'Recurso', bg: '#f8fafc', color: '#475569', border: '#e2e8f0' };
 }
 
 function SubjectCardSkeleton() {
@@ -115,18 +108,15 @@ function SubjectCard({ subject, index }: { subject: Subject; index: number }) {
               Tipos de material disponible
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {subject.materialTypes.map((type) => {
-                const pill = getMaterialTypePill(type);
-                return (
-                  <span
-                    key={type}
-                    className="text-[10px] font-semibold px-2.5 py-1 rounded-full border"
-                    style={{ background: pill.bg, color: pill.color, borderColor: pill.border }}
-                  >
-                    {pill.label}
-                  </span>
-                );
-              })}
+              {subject.materialTypes.map((pill) => (
+                <span
+                  key={pill.label}
+                  className="text-[10px] font-semibold px-2.5 py-1 rounded-full border"
+                  style={{ background: pill.bg, color: pill.color, borderColor: pill.border }}
+                >
+                  {pill.label}
+                </span>
+              ))}
             </div>
           </>
         ) : (
@@ -172,7 +162,7 @@ export default function PublicHomePage() {
     async function loadSubjects() {
       const { data } = await supabase
         .from('subjects')
-        .select('id, name, color, description, units(weeks(id, number, title, materials(id, name, type, source, is_published)))')
+        .select('id, name, color, description, units(weeks(id, number, title, materials(id, name, type, source, file_url, is_published)))')
         .order('created_at', { ascending: false });
 
       const normalized: Subject[] = (data ?? []).map((subject) => {
@@ -185,12 +175,13 @@ export default function PublicHomePage() {
           }))
         ).sort((a: Week, b: Week) => a.number - b.number);
 
-        // Collect unique material types across all published materials
-        const typeSet = new Set<string>();
+        // Collect unique material badges across all published materials (dedupe por etiqueta,
+        // no por type crudo — un class_kit con file_url se agrupa por su tipo real, no por "ai").
+        const badgeMap = new Map<string, MaterialBadge>();
         allWeeks.forEach((week) =>
           week.materials.forEach((mat) => {
-            const key = mat.source === 'ai' ? 'ai' : (mat.type ?? 'link');
-            typeSet.add(key);
+            const badge = getMaterialBadge({ type: mat.type, source: mat.source, fileUrl: mat.file_url });
+            badgeMap.set(badge.label, badge);
           })
         );
 
@@ -203,7 +194,7 @@ export default function PublicHomePage() {
           description: subject.description as string | null,
           totalWeeks: allWeeks.length,
           totalMaterials,
-          materialTypes: Array.from(typeSet),
+          materialTypes: Array.from(badgeMap.values()),
         };
       });
 

@@ -7,6 +7,7 @@ import { createClient } from '@/utils/supabase/client';
 interface GenerateAllContentProps {
   unitId: string;
   subjectId: string;
+  techStack?: string | null;
 }
 
 type Week = {
@@ -22,7 +23,7 @@ const CONTENT_TYPES = [
   { value: 'guide', label: 'Guía de Estudio' },
 ];
 
-export default function GenerateAllContent({ unitId, subjectId }: GenerateAllContentProps) {
+export default function GenerateAllContent({ unitId, subjectId, techStack }: GenerateAllContentProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [weeks, setWeeks] = useState<Week[]>([]);
@@ -88,7 +89,7 @@ export default function GenerateAllContent({ unitId, subjectId }: GenerateAllCon
         const response = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: contentType, topic }),
+          body: JSON.stringify({ type: contentType, topic, techStack: techStack ?? undefined }),
         });
 
         if (!response.ok) {

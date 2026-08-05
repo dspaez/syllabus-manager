@@ -8,6 +8,9 @@ import DeleteMaterial from '@/components/DeleteMaterial';
 import DeleteRowButton from '@/components/DeleteRowButton';
 import EditMaterialName from '@/components/EditMaterialName';
 import GenerateAllContent from '@/components/GenerateAllContent';
+import GenerateTechnicalDoc from '@/components/GenerateTechnicalDoc';
+import GenerateClassKit from '@/components/GenerateClassKit';
+import { getMaterialBadge } from '@/lib/materialBadge';
 
 type Material = {
     id: string;
@@ -37,6 +40,10 @@ type Unit = {
 type Subject = {
     color: string | null;
     name: string;
+    technical_document: string | null;
+    course_mode: string | null;
+    tech_stack: string | null;
+    accent_color: string | null;
 };
 
 function MaterialTypeIcon({ type, source }: { type: string | null; source: string | null }) {
@@ -72,14 +79,6 @@ function MaterialTypeIcon({ type, source }: { type: string | null; source: strin
     );
 }
 
-function getMaterialBadge(type: string | null, source: string | null) {
-    if (source === 'ai') return { label: 'Slides IA', bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0' };
-    if (type === 'pdf') return { label: 'PDF', bg: '#fef2f2', color: '#b91c1c', border: '#fecaca' };
-    if (type === 'pptx') return { label: 'PPTX', bg: '#f5f3ff', color: '#6d28d9', border: '#ddd6fe' };
-    if (type === 'doc') return { label: 'DOC', bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' };
-    return { label: 'Archivo', bg: '#f8fafc', color: '#475569', border: '#e2e8f0' };
-}
-
 export default async function UnitPage({
     params,
 }: {
@@ -91,7 +90,7 @@ export default async function UnitPage({
     const [
         { data: unit, error: unitError },
         { data: weeks, error: weeksError },
-        { data: subject },
+        { data: subject, error: subjectError },
     ] = await Promise.all([
         supabase.from('units').select('*').eq('id', unitId).single(),
         supabase
@@ -99,10 +98,17 @@ export default async function UnitPage({
             .select('*, materials(*)')
             .eq('unit_id', unitId)
             .order('number', { ascending: true }),
-        supabase.from('subjects').select('color, name').eq('id', id).single(),
+        supabase.from('subjects').select('color, name, technical_document, course_mode, tech_stack, accent_color').eq('id', id).single(),
     ]);
 
     if (unitError || !unit) notFound();
+    // Si esta consulta falla (ej. columna nueva sin migrar), `subject` queda null y el resto
+    // de la página degrada con valores por defecto — pero eso rompe silenciosamente props como
+    // `subjectName` en GenerateClassKit (queda "" y el endpoint la rechaza como campo faltante,
+    // un síntoma confuso y lejano de la causa real). Loguear acá para que la causa quede visible.
+    if (subjectError) {
+        console.error(`[units/${unitId}] no se pudo cargar la materia ${id}:`, subjectError.message);
+    }
 
     const u = unit as Unit;
     const s = subject as Subject | null;
@@ -144,7 +150,7 @@ export default async function UnitPage({
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap shrink-0">
-                        <GenerateAllContent unitId={unitId} subjectId={id} />
+                        <GenerateAllContent unitId={unitId} subjectId={id} techStack={s?.tech_stack ?? null} />
                         <Link
                             href={`/admin/subjects/${id}/units/${unitId}/weeks/new`}
                             className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
@@ -236,7 +242,24 @@ export default async function UnitPage({
                                                 {pubCount}/{matCount} pub.
                                             </span>
                                         )}
-                                        <GenerateWithAI weekId={week.id} subjectId={id} unitId={unitId} />
+                                        <GenerateWithAI weekId={week.id} subjectId={id} unitId={unitId} techStack={s?.tech_stack ?? null} />
+                                        <GenerateClassKit
+                                            weekId={week.id}
+                                            subjectName={s?.name ?? ''}
+                                            weekNumber={week.number}
+                                            weekTopic={[week.title ?? `Semana ${week.number}`, week.description].filter(Boolean).join(' — ')}
+                                            techStack={s?.tech_stack ?? null}
+                                            accentColor={s?.accent_color ?? null}
+                                        />
+                                        {s?.course_mode === 'project' && (
+                                            <GenerateTechnicalDoc
+                                                subjectId={id}
+                                                subjectName={s.name}
+                                                currentDocument={s.technical_document}
+                                                techStack={s.tech_stack}
+                                                weekTopic={[week.title ?? `Semana ${week.number}`, week.description].filter(Boolean).join(' — ')}
+                                            />
+                                        )}
                                         <Link
                                             href={`/admin/subjects/${id}/units/${unitId}/weeks/${week.id}/materials/new`}
                                             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-300 hover:bg-slate-100 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
@@ -267,7 +290,7 @@ export default async function UnitPage({
                                 {week.materials && week.materials.length > 0 ? (
                                     <ul className="divide-y divide-slate-50 dark:divide-slate-800/60">
                                         {week.materials.map((material: Material) => {
-                                            const badge = getMaterialBadge(material.type, material.source);
+                                            const badge = getMaterialBadge({ type: material.type, source: material.source, fileUrl: material.file_url });
                                             return (
                                                 <li
                                                     key={material.id}

@@ -13,9 +13,11 @@ interface Slide {
 }
 
 interface Exercise {
-    statement: string;
-    hints: string[];
-    solution: string;
+    titulo: string;
+    contexto: string;
+    requerimientos: string[];
+    // Ausente cuando el material se sirve a un visitante no autenticado: se omite server-side, nunca llega al cliente.
+    solucionDocente?: string;
 }
 
 interface Concept {
@@ -28,7 +30,8 @@ interface SlidesContent {
 }
 
 interface ExercisesContent {
-    exercises: Exercise[];
+    ejercicioClase: Exercise;
+    ejerciciosTarea?: Exercise[];
 }
 
 interface GuideContent {
@@ -63,69 +66,138 @@ type MaterialRow = {
 
 function detectType(content: AIContent): 'slides' | 'exercises' | 'guide' {
     if ('slides' in content) return 'slides';
-    if ('exercises' in content) return 'exercises';
+    if ('ejercicioClase' in content) return 'exercises';
     return 'guide';
+}
+
+// ── Redacción de campos solo-docente ────────────────────────────────────────
+// Patrón reutilizable para cualquier tipo de contenido con una parte exclusiva
+// del docente (ej. rúbricas de exámenes en fases futuras): quita esos campos
+// del objeto ANTES de que llegue al árbol de render, para que nunca se
+// serialicen en el HTML enviado a un visitante no autenticado.
+function omitFields<T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
+    const copy = { ...obj };
+    for (const key of keys) delete copy[key];
+    return copy;
+}
+
+function redactExercisesForPublic(data: ExercisesContent): ExercisesContent {
+    return {
+        ejercicioClase: omitFields(data.ejercicioClase, ['solucionDocente']),
+        ejerciciosTarea: data.ejerciciosTarea?.map((ex) => omitFields(ex, ['solucionDocente'])),
+    };
+}
+
+// ── Archivo descargable (sin contenido JSON) ────────────────────────────────
+// Cubre tanto uploads manuales como archivos generados por IA (ej. class_kit):
+// la señal real de "esto es un archivo, no JSON a parsear" es file_url, no source.
+
+const FILE_TYPE_LABELS: Record<string, string> = {
+    pptx: 'Presentación (PPTX)',
+    doc: 'Documento',
+    img: 'Imagen',
+};
+
+function FileDownloadView({ url, name, type, accentColor }: { url: string; name: string; type: string | null; accentColor: string }) {
+    const label = (type && FILE_TYPE_LABELS[type]) ?? 'Archivo';
+    return (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-16 text-center">
+            <p className="text-5xl mb-5">📎</p>
+            <p className="text-base font-semibold text-gray-900 mb-1">{name}</p>
+            <p className="text-sm text-gray-400 mb-7">{label}</p>
+            <div className="flex flex-col sm:flex-row gap-3">
+                <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-semibold text-white px-5 py-2.5 rounded-xl transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: accentColor }}
+                >
+                    Abrir en nueva pestaña ↗
+                </a>
+                <a
+                    href={url}
+                    download={name}
+                    className="text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-xl transition-colors"
+                >
+                    ⬇ Descargar
+                </a>
+            </div>
+        </div>
+    );
 }
 
 // ── Renderers ─────────────────────────────────────────────────────────────
 
+function ExerciseCard({ ex, label, accentColor }: { ex: Exercise; label: string; accentColor: string }) {
+    return (
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+            {/* Header with subject accent color */}
+            <div
+                className="flex items-center gap-3 px-5 py-3.5"
+                style={{ background: `linear-gradient(135deg, ${accentColor}dd 0%, ${accentColor}99 100%)` }}
+            >
+                <p className="text-xs font-medium uppercase tracking-widest text-white/80">{label}</p>
+                <p className="text-sm font-semibold text-white">{ex.titulo}</p>
+            </div>
+
+            <div className="px-5 py-4 space-y-4">
+                {/* Contexto */}
+                <p className="text-sm text-gray-800 leading-relaxed">{ex.contexto}</p>
+
+                {/* Requerimientos */}
+                {ex.requerimientos.length > 0 && (
+                    <div>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Requerimientos</p>
+                        <ul className="space-y-1.5">
+                            {ex.requerimientos.map((req, j) => (
+                                <li key={j} className="flex items-start gap-2 text-sm text-gray-700">
+                                    <span className="mt-1.5 shrink-0 h-1.5 w-1.5 rounded-full bg-gray-300" />
+                                    {req}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                {/* Solución docente — el campo llega undefined para visitantes no autenticados (redactado server-side), por eso este bloque simplemente no se renderiza para ellos */}
+                {ex.solucionDocente && (
+                    <details className="group rounded-xl border border-emerald-200 bg-emerald-50">
+                        <summary className="flex cursor-pointer select-none items-center gap-2 px-4 py-2.5 text-sm font-medium text-emerald-800 marker:content-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                                className="size-4 shrink-0 transition-transform group-open:rotate-90">
+                                <path fillRule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+                            </svg>
+                            Ver solución docente
+                        </summary>
+                        <div className="px-4 pb-3 pt-2 border-t border-emerald-200">
+                            <pre className="whitespace-pre-wrap wrap-break-word text-xs text-emerald-900 font-mono leading-relaxed">{ex.solucionDocente}</pre>
+                        </div>
+                    </details>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function ExercisesView({ data, accentColor }: { data: ExercisesContent; accentColor: string }) {
     return (
-        <div className="space-y-5">
-            {data.exercises.map((ex, i) => (
-                <div key={i} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    {/* Header with subject accent color */}
-                    <div
-                        className="flex items-center gap-3 px-5 py-3.5"
-                        style={{ background: `linear-gradient(135deg, ${accentColor}dd 0%, ${accentColor}99 100%)` }}
-                    >
-                        <span className="shrink-0 h-7 w-7 flex items-center justify-center rounded-full bg-white/20 text-white text-xs font-bold">
-                            {i + 1}
-                        </span>
-                        <p className="text-sm font-semibold text-white">Ejercicio {i + 1}</p>
+        <div className="space-y-8">
+            <section>
+                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Ejercicio de clase</h2>
+                <ExerciseCard ex={data.ejercicioClase} label="Clase" accentColor={accentColor} />
+            </section>
+
+            {data.ejerciciosTarea && data.ejerciciosTarea.length > 0 && (
+                <section>
+                    <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Tarea en casa</h2>
+                    <div className="space-y-5">
+                        {data.ejerciciosTarea.map((ex, i) => (
+                            <ExerciseCard key={i} ex={ex} label={`Variante ${i + 1}`} accentColor={accentColor} />
+                        ))}
                     </div>
-
-                    <div className="px-5 py-4 space-y-4">
-                        {/* Statement */}
-                        <p className="text-sm text-gray-800 leading-relaxed">{ex.statement}</p>
-
-                        {/* Hints — native collapsible, no JS needed */}
-                        {ex.hints.length > 0 && (
-                            <details className="group rounded-xl border border-amber-200 bg-amber-50">
-                                <summary className="flex cursor-pointer select-none items-center gap-2 px-4 py-2.5 text-sm font-medium text-amber-800 marker:content-none">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                                        className="size-4 shrink-0 transition-transform group-open:rotate-90">
-                                        <path fillRule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-                                    </svg>
-                                    Pistas ({ex.hints.length})
-                                </summary>
-                                <ul className="px-4 pb-3 pt-1 space-y-1.5 border-t border-amber-200">
-                                    {ex.hints.map((hint, j) => (
-                                        <li key={j} className="flex items-start gap-2 text-sm text-amber-900">
-                                            <span className="mt-1.5 shrink-0 h-1.5 w-1.5 rounded-full bg-amber-400" />
-                                            {hint}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </details>
-                        )}
-
-                        {/* Solution */}
-                        <details className="group rounded-xl border border-emerald-200 bg-emerald-50">
-                            <summary className="flex cursor-pointer select-none items-center gap-2 px-4 py-2.5 text-sm font-medium text-emerald-800 marker:content-none">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-                                    className="size-4 shrink-0 transition-transform group-open:rotate-90">
-                                    <path fillRule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-                                </svg>
-                                Ver solución
-                            </summary>
-                            <div className="px-4 pb-3 pt-2 border-t border-emerald-200">
-                                <p className="text-sm text-emerald-900 leading-relaxed">{ex.solution}</p>
-                            </div>
-                        </details>
-                    </div>
-                </div>
-            ))}
+                </section>
+            )}
         </div>
     );
 }
@@ -219,6 +291,10 @@ export default async function MaterialPage({
     const { id } = await params;
     const supabase = createClient(await cookies());
 
+    // Mismo mecanismo que usa src/proxy.ts para distinguir sesión admin de visitante anónimo.
+    const { data: { user } } = await supabase.auth.getUser();
+    const isAdmin = Boolean(user);
+
     const { data: material, error } = await supabase
         .from('materials')
         .select('*, weeks!inner(unit_id, units!inner(subject_id, subjects!inner(name, color)))')
@@ -245,9 +321,25 @@ export default async function MaterialPage({
 
     const contentType = content ? detectType(content) : null;
 
-    // PDF upload → full-screen viewer
-    if (m.type === 'pdf' && m.source === 'upload' && m.file_url) {
-        return <PDFViewer url={m.file_url} name={m.name} />;
+    // Redacta solucionDocente ANTES de que el contenido llegue al árbol de render —
+    // para un visitante no autenticado, el campo nunca existe en el objeto que se serializa a HTML.
+    if (content && contentType === 'exercises' && !isAdmin) {
+        content = redactExercisesForPublic(content as ExercisesContent);
+    }
+
+    // Archivo real en Storage (upload manual o generado por IA, ej. class_kit) → viewer o
+    // descarga según el tipo, sin intentar parsear JSON que no existe para estos materiales.
+    if (m.file_url && !content) {
+        if (m.type === 'pdf') {
+            return <PDFViewer url={m.file_url} name={m.name} />;
+        }
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+                <div className="w-full max-w-md">
+                    <FileDownloadView url={m.file_url} name={m.name} type={m.type} accentColor={subjectColor} />
+                </div>
+            </div>
+        );
     }
 
     // Slides → full-screen presentation mode

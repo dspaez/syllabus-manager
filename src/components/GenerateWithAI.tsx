@@ -11,9 +11,10 @@ interface Slide {
 }
 
 interface Exercise {
-    statement: string;
-    hints: string[];
-    solution: string;
+    titulo: string;
+    contexto: string;
+    requerimientos: string[];
+    solucionDocente: string;
 }
 
 interface Concept {
@@ -26,7 +27,8 @@ interface SlidesResult {
 }
 
 interface ExercisesResult {
-    exercises: Exercise[];
+    ejercicioClase: Exercise;
+    ejerciciosTarea?: Exercise[];
 }
 
 interface GuideResult {
@@ -42,6 +44,7 @@ interface Props {
     weekId: string;
     subjectId: string;
     unitId: string;
+    techStack?: string | null;
 }
 
 const TYPE_LABELS: Record<GenerateType, string> = {
@@ -69,28 +72,38 @@ function SlidesView({ data }: { data: SlidesResult }) {
     );
 }
 
+function ExerciseCard({ ex, label }: { ex: Exercise; label: string }) {
+    return (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <p className="text-xs font-medium text-violet-600 uppercase tracking-wide">{label}</p>
+            <p className="mt-0.5 font-semibold text-gray-800">{ex.titulo}</p>
+            <p className="mt-2 text-sm text-gray-700">{ex.contexto}</p>
+            {ex.requerimientos.length > 0 && (
+                <div className="mt-2">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Requerimientos</p>
+                    <ul className="mt-1 list-disc pl-5 space-y-0.5">
+                        {ex.requerimientos.map((req, j) => (
+                            <li key={j} className="text-sm text-gray-600">{req}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+            <details className="mt-2 rounded-md border border-emerald-200 bg-emerald-50">
+                <summary className="cursor-pointer select-none px-3 py-1.5 text-xs font-medium text-emerald-800">
+                    Ver solución docente
+                </summary>
+                <pre className="whitespace-pre-wrap wrap-break-word px-3 pb-2 pt-1 text-xs text-emerald-900 font-mono">{ex.solucionDocente}</pre>
+            </details>
+        </div>
+    );
+}
+
 function ExercisesView({ data }: { data: ExercisesResult }) {
     return (
         <div className="space-y-4">
-            {data.exercises.map((ex, i) => (
-                <div key={i} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <p className="font-semibold text-gray-800">Ejercicio {i + 1}</p>
-                    <p className="mt-1 text-sm text-gray-700">{ex.statement}</p>
-                    {ex.hints.length > 0 && (
-                        <div className="mt-2">
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pistas</p>
-                            <ul className="mt-1 list-disc pl-5 space-y-0.5">
-                                {ex.hints.map((hint, j) => (
-                                    <li key={j} className="text-sm text-gray-600">{hint}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                    <div className="mt-2">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Solución</p>
-                        <p className="mt-1 text-sm text-gray-700">{ex.solution}</p>
-                    </div>
-                </div>
+            <ExerciseCard ex={data.ejercicioClase} label="Ejercicio de clase" />
+            {(data.ejerciciosTarea ?? []).map((ex, i) => (
+                <ExerciseCard key={i} ex={ex} label={`Tarea — variante ${i + 1}`} />
             ))}
         </div>
     );
@@ -140,7 +153,7 @@ function ResultView({ type, result }: { type: GenerateType; result: GenerateResu
     return <GuideView data={result as GuideResult} />;
 }
 
-export default function GenerateWithAI({ weekId }: Props) {
+export default function GenerateWithAI({ weekId, techStack }: Props) {
     const [open, setOpen] = useState(false);
     const [type, setType] = useState<GenerateType>('slides');
     const [topic, setTopic] = useState('');
@@ -176,7 +189,7 @@ export default function GenerateWithAI({ weekId }: Props) {
             const res = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type, topic: topic.trim() }),
+                body: JSON.stringify({ type, topic: topic.trim(), techStack: techStack ?? undefined }),
             });
 
             if (!res.ok) {

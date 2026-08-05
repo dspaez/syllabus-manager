@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Archivo de referencia pegado por el usuario (no es código de la app).
+    "plantilla_maestra_referencia.js",
   ]),
 ]);
 
