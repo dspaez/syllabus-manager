@@ -18,6 +18,7 @@ type Material = {
     type: string | null;
     source: string | null;
     file_url: string | null;
+    description: string | null;
     is_published: boolean;
 };
 
@@ -115,20 +116,29 @@ export default async function UnitPage({
     const accent = s?.color ?? '#2563eb';
     const weeksList = (weeks as Week[] | null) ?? [];
 
-    // "Clase anterior" real (no una suposición del modelo): la semana con el número más alto
-    // por debajo del actual dentro de esta unidad — no `number - 1` a secas, porque las semanas
-    // se pueden borrar o reordenar (el curso es dinámico) y eso deja huecos en la numeración.
-    // Si esta es la primera semana de la unidad, la anterior real está en la ÚLTIMA semana de
-    // la unidad previa del mismo subject (por `order`) — una sola consulta extra, no por semana,
-    // ya que como mucho una semana de esta página necesita ese fallback.
+    // "Clase anterior"/"próxima clase" reales (no una suposición del modelo): la semana con el
+    // número más alto por debajo (o más bajo por encima) del actual dentro de esta unidad — no
+    // `number ± 1` a secas, porque las semanas se pueden borrar o reordenar (el curso es dinámico)
+    // y eso deja huecos en la numeración. Si el actual es el primer/último de su unidad, el real
+    // vive en la última/primera semana de la unidad anterior/siguiente del mismo subject (por
+    // `order`) — una sola consulta de unidades, reutilizada para ambas direcciones.
     function sameUnitPreviousWeek(week: Week): Week | null {
         const earlier = weeksList.filter((w) => w.number < week.number);
         if (earlier.length === 0) return null;
         return earlier.reduce((max, w) => (w.number > max.number ? w : max));
     }
 
+    function sameUnitNextWeek(week: Week): Week | null {
+        const later = weeksList.filter((w) => w.number > week.number);
+        if (later.length === 0) return null;
+        return later.reduce((min, w) => (w.number < min.number ? w : min));
+    }
+
     let crossUnitPreviousWeek: { title: string | null; description: string | null } | null = null;
-    if (weeksList.some((w) => sameUnitPreviousWeek(w) === null)) {
+    let crossUnitNextWeek: { title: string | null; description: string | null } | null = null;
+    const needsPrevFallback = weeksList.some((w) => sameUnitPreviousWeek(w) === null);
+    const needsNextFallback = weeksList.some((w) => sameUnitNextWeek(w) === null);
+    if (needsPrevFallback || needsNextFallback) {
         const { data: subjectUnits } = await supabase
             .from('units')
             .select('id, order')
@@ -136,15 +146,24 @@ export default async function UnitPage({
             .order('order', { ascending: true });
         const units = subjectUnits ?? [];
         const currentIndex = units.findIndex((un) => un.id === unitId);
-        const prevUnit = currentIndex > 0 ? units[currentIndex - 1] : null;
-        if (prevUnit) {
+
+        if (needsPrevFallback && currentIndex > 0) {
             const { data: prevWeeks } = await supabase
                 .from('weeks')
                 .select('title, description')
-                .eq('unit_id', prevUnit.id)
+                .eq('unit_id', units[currentIndex - 1].id)
                 .order('number', { ascending: false })
                 .limit(1);
             crossUnitPreviousWeek = prevWeeks?.[0] ?? null;
+        }
+        if (needsNextFallback && currentIndex !== -1 && currentIndex < units.length - 1) {
+            const { data: nextWeeks } = await supabase
+                .from('weeks')
+                .select('title, description')
+                .eq('unit_id', units[currentIndex + 1].id)
+                .order('number', { ascending: true })
+                .limit(1);
+            crossUnitNextWeek = nextWeeks?.[0] ?? null;
         }
     }
 
@@ -152,6 +171,39 @@ export default async function UnitPage({
         const prev = sameUnitPreviousWeek(week) ?? crossUnitPreviousWeek;
         if (!prev) return '';
         return [prev.title, prev.description].filter(Boolean).join(' — ');
+    }
+
+    function nextWeekTopicFor(week: Week): string {
+        const next = sameUnitNextWeek(week) ?? crossUnitNextWeek;
+        if (!next) return '';
+        return [next.title, next.description].filter(Boolean).join(' — ');
+    }
+
+    // Contenido REAL de esta misma semana para anclar el class kit — nunca se mezclan los dos
+    // flujos: 'topics' usa el ejercicio de clase ya generado (solo ejercicioClase, nunca las
+    // variantes de ejerciciosTarea — esas son para que el estudiante las resuelva solo, no para
+    // que la guía técnica las precocine); 'project' usa el documento técnico del subject. Si no
+    // existe todavía el contenido real correspondiente, queda `null` y el prompt no inventa que
+    // sí lo hay — mismo patrón que "clase anterior".
+    function currentExerciseContextFor(week: Week): string | null {
+        for (const m of week.materials ?? []) {
+            if (m.source !== 'ai' || !m.description) continue;
+            let parsed: { ejercicioClase?: { titulo?: string; contexto?: string; requerimientos?: string[]; solucionDocente?: string } };
+            try {
+                parsed = JSON.parse(m.description);
+            } catch {
+                continue;
+            }
+            const ej = parsed.ejercicioClase;
+            if (!ej) continue;
+            return [
+                `Título: ${ej.titulo ?? ''}`,
+                `Contexto: ${ej.contexto ?? ''}`,
+                ej.requerimientos?.length ? `Requerimientos:\n${ej.requerimientos.join('\n')}` : '',
+                `Solución completa:\n${ej.solucionDocente ?? ''}`,
+            ].filter(Boolean).join('\n\n');
+        }
+        return null;
     }
 
     const totalMaterials = (weeks ?? []).reduce(
@@ -289,6 +341,9 @@ export default async function UnitPage({
                                             weekNumber={week.number}
                                             weekTopic={[week.title ?? `Semana ${week.number}`, week.description].filter(Boolean).join(' — ')}
                                             previousWeekTopic={previousWeekTopicFor(week) || null}
+                                            nextWeekTopic={nextWeekTopicFor(week) || null}
+                                            exerciseContext={s?.course_mode === 'topics' ? currentExerciseContextFor(week) : null}
+                                            projectContext={s?.course_mode === 'project' ? s.technical_document : null}
                                             techStack={s?.tech_stack ?? null}
                                             accentColor={s?.accent_color ?? null}
                                         />

@@ -11,6 +11,9 @@ interface Props {
     weekNumber: number;
     weekTopic: string;
     previousWeekTopic?: string | null;
+    nextWeekTopic?: string | null;
+    exerciseContext?: string | null;
+    projectContext?: string | null;
     techStack?: string | null;
     accentColor?: string | null;
 }
@@ -18,12 +21,16 @@ interface Props {
 type Stage = 'form' | 'content' | 'files';
 type Theme = 'dark' | 'light';
 
-export default function GenerateClassKit({ weekId, subjectName, weekNumber, weekTopic, previousWeekTopic, techStack, accentColor }: Props) {
+export default function GenerateClassKit({
+    weekId, subjectName, weekNumber, weekTopic, previousWeekTopic, nextWeekTopic,
+    exerciseContext, projectContext, techStack, accentColor,
+}: Props) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const [stage, setStage] = useState<Stage>('form');
     const [topic, setTopic] = useState(weekTopic);
     const [prevTopic, setPrevTopic] = useState(previousWeekTopic ?? '');
+    const [nextTopic, setNextTopic] = useState(nextWeekTopic ?? '');
     const [theme, setTheme] = useState<Theme>('dark');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -40,6 +47,7 @@ export default function GenerateClassKit({ weekId, subjectName, weekNumber, week
         setStage('form');
         setTopic(weekTopic);
         setPrevTopic(previousWeekTopic ?? '');
+        setNextTopic(nextWeekTopic ?? '');
         setTheme('dark');
         setIncludeGuion(true);
         setIncludeGuia(true);
@@ -72,6 +80,9 @@ export default function GenerateClassKit({ weekId, subjectName, weekNumber, week
                     subjectName,
                     weekTopic: topic.trim(),
                     previousWeekTopic: prevTopic.trim() || undefined,
+                    nextWeekTopic: nextTopic.trim() || undefined,
+                    exerciseContext: exerciseContext ?? undefined,
+                    projectContext: projectContext ?? undefined,
                     techStack: techStack ?? undefined,
                     include: [
                         'slides',
@@ -235,6 +246,31 @@ export default function GenerateClassKit({ weekId, subjectName, weekNumber, week
                                         Detectado automáticamente de la semana previa en el plan. Corregilo o vacialo si lo que se dio en clase cambió.
                                     </p>
                                 </div>
+
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm font-medium text-gray-700">Próxima clase (para el gancho de cierre)</label>
+                                    <textarea
+                                        rows={2}
+                                        value={nextTopic}
+                                        onChange={(e) => setNextTopic(e.target.value)}
+                                        placeholder="No se detectó una próxima semana — se generará sin adelanto de cierre."
+                                        className="resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-gray-400"
+                                    />
+                                    <p className="text-xs text-gray-500">
+                                        Detectado automáticamente de la semana siguiente en el plan. Solo se usa como adelanto breve al cierre, nunca como contenido de hoy.
+                                    </p>
+                                </div>
+
+                                {(exerciseContext || projectContext) && (
+                                    <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800 border border-emerald-200">
+                                        ✓ Se va a anclar al {exerciseContext ? 'ejercicio de clase ya generado' : 'documento técnico actual del proyecto'} de esta semana — el código de la guía técnica va a construir eso mismo, no uno inventado aparte.
+                                    </p>
+                                )}
+                                {!exerciseContext && !projectContext && (
+                                    <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500 border border-gray-200">
+                                        No hay ejercicio ni documento técnico real generado todavía para esta semana — la guía técnica va a proponer uno genérico.
+                                    </p>
+                                )}
 
                                 <div className="flex flex-col gap-1.5">
                                     <label className="text-sm font-medium text-gray-700">Qué incluir</label>

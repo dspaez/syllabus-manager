@@ -215,6 +215,16 @@ const CLASS_KIT_PEDAGOGY =
     `(ej. un bullet de repaso que lo referencie, o una frase de transición en speakerNotes) — nunca lo ` +
     `ignores si está presente. Si NO te paso ese bloque, no inventes ni asumas qué se vio antes: es la ` +
     `primera clase del curso, o el docente no encontró una clase previa real que enlazar.\n` +
+    `- Si en el mensaje te paso un bloque "Próxima clase", usalo SOLO para un gancho de cierre breve ` +
+    `(ej. la última slide o el cierre de speakerNotes/guionDocente puede adelantar en una frase qué sigue) ` +
+    `— nunca desarrolles ese tema hoy, es contenido de otra clase. Si NO te paso ese bloque, no inventes ` +
+    `qué viene después.\n` +
+    `- Si en el mensaje te paso un bloque "Ejercicio de clase real" o "Documento técnico del proyecto", ` +
+    `TODO el código de esta clase (slides de tipo "codigo", guión, guía técnica) tiene que construir ` +
+    `exactamente ESE código real — mismos nombres de clases/archivos/variables, mismo dominio de negocio. ` +
+    `No inventes un ejercicio o arquitectura paralela aunque se te ocurra uno "mejor". Si NO te paso ` +
+    `ninguno de esos bloques, proponé vos un ejercicio o arquitectura razonable, coherente con el tema y ` +
+    `el stack — igual que hacías antes de tener este contexto.\n` +
     `- Usa analogías del mundo real cuando ayuden a la intuición — nómbralas (ej. "Analogía del restaurante") ` +
     `para que el docente pueda referenciarlas rápido en clase.\n` +
     `- Prefiere código en vivo sobre slides cargadas de texto: las slides son guía, no el contenido completo. ` +
@@ -275,7 +285,10 @@ const GUION_DOCENTE_INSTRUCTIONS =
 
 const GUIA_TECNICA_INSTRUCTIONS =
     `guiaTecnica — documento reproducible paso a paso, suficientemente detallado para que el docente pueda ` +
-    `seguirlo sin improvisar en vivo:\n` +
+    `seguirlo sin improvisar en vivo. Si te pasé un bloque "Ejercicio de clase real" o "Documento técnico ` +
+    `del proyecto", los "pasos" deben construir ESE código de forma incremental (dividido en los pasos ` +
+    `naturales: clases, métodos, validaciones, demo) — nunca copiarlo entero en un solo paso, ni resolver ` +
+    `en su lugar un ejercicio distinto por más razonable que parezca:\n` +
     `   - resumen: tabla de todos los pasos (paso, acción, tiempo estimado).\n` +
     `   - preFlight: checklist a verificar ANTES de empezar el live coding (ej. variables de entorno correctas, ` +
     `dependencias previas instaladas, datos de prueba ya cargados).\n` +
@@ -304,25 +317,45 @@ interface ClassKitInclude {
     guiaTecnica: boolean;
 }
 
-// Bloque de contexto real de la clase anterior — nunca se fabrica del lado del modelo. Viene
-// de la semana previa detectada en el plan (ver previousWeekTopicFor en units/[unitId]/page.tsx),
-// que el docente puede corregir o vaciar en el formulario porque el plan es dinámico y lo que
-// se dio en clase puede no coincidir con lo planeado. Si no hay dato real, el bloque se omite
-// del prompt por completo — el system prompt ya instruye a no inventar continuidad en ese caso.
+// Bloques de contexto real — nunca se fabrican del lado del modelo. "Clase anterior"/"Próxima
+// clase" vienen de las semanas detectadas en el plan (ver previousWeekTopicFor/nextWeekTopicFor
+// en units/[unitId]/page.tsx), que el docente puede corregir o vaciar porque el plan es dinámico.
+// Si no hay dato real, el bloque se omite del prompt por completo — el system prompt ya instruye
+// a no inventar continuidad en ese caso.
 function previousClassBlock(previousWeekTopic?: string): string {
     return previousWeekTopic?.trim() ? `\n\nClase anterior: ${previousWeekTopic.trim()}.` : '';
+}
+
+function nextClassBlock(nextWeekTopic?: string): string {
+    return nextWeekTopic?.trim() ? `\n\nPróxima clase: ${nextWeekTopic.trim()}.` : '';
+}
+
+// Contenido REAL de esta misma semana para anclar todo el código del kit — mutuamente
+// excluyentes por diseño (ver currentExerciseContextFor en units/[unitId]/page.tsx): 'topics'
+// manda exerciseContext (el ejercicioClase ya generado), 'project' manda projectContext (el
+// technical_document del subject). Si ninguno llegó, el bloque se omite y el modelo propone
+// un ejercicio/arquitectura razonable por su cuenta, como hacía antes de este contexto.
+function currentContentBlock(exerciseContext?: string, projectContext?: string): string {
+    if (exerciseContext?.trim()) return `\n\nEjercicio de clase real (ya generado para esta semana):\n${exerciseContext.trim()}`;
+    if (projectContext?.trim()) return `\n\nDocumento técnico del proyecto (arquitectura y convenciones reales):\n${projectContext.trim()}`;
+    return '';
 }
 
 async function generateClassKit(
     subjectName: string,
     weekTopic: string,
     previousWeekTopic: string | undefined,
+    nextWeekTopic: string | undefined,
+    exerciseContext: string | undefined,
+    projectContext: string | undefined,
     techStack: string | undefined,
     include: ClassKitInclude,
 ): Promise<ClassKitContent> {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const contextSuffix = techStackContext(techStack);
     const previousSuffix = previousClassBlock(previousWeekTopic);
+    const nextSuffix = nextClassBlock(nextWeekTopic);
+    const currentContentSuffix = currentContentBlock(exerciseContext, projectContext);
 
     async function callClaude<T>(label: string, system: string, userPrompt: string, schema: Parameters<typeof zodOutputFormat>[0]): Promise<T> {
         const stream = anthropic.messages.stream({
@@ -355,7 +388,8 @@ async function generateClassKit(
         return message.parsed_output as T;
     }
 
-    const slidesPrompt = `Materia: ${subjectName}. Tema de la clase de esta semana: ${weekTopic}.` + contextSuffix + previousSuffix;
+    const slidesPrompt = `Materia: ${subjectName}. Tema de la clase de esta semana: ${weekTopic}.` +
+        contextSuffix + previousSuffix + nextSuffix + currentContentSuffix;
     const { slides } = await callClaude<{ slides: ClassKitContent['slides'] }>(
         'slides', SLIDES_SYSTEM_PROMPT, slidesPrompt, SlidesOnlySchema,
     );
@@ -371,7 +405,8 @@ async function generateClassKit(
         .map((s, i) => `${i + 1}. [${s.layout}] ${'titulo' in s ? s.titulo : s.nombreAnalogia}`)
         .join('\n');
     const docsPrompt =
-        `Materia: ${subjectName}. Tema de la clase de esta semana: ${weekTopic}.` + contextSuffix + previousSuffix +
+        `Materia: ${subjectName}. Tema de la clase de esta semana: ${weekTopic}.` +
+        contextSuffix + previousSuffix + nextSuffix + currentContentSuffix +
         `\n\nSlides ya generadas (índice. [layout] título):\n${slidesSummary}`;
     const docsSchema = wantsGuion && wantsGuia
         ? z.object({ guionDocente: GuionDocenteSchema, guiaTecnica: GuiaTecnicaSchema })
@@ -387,7 +422,11 @@ async function generateClassKit(
 
 export async function POST(request: NextRequest) {
     try {
-        const { type, topic, modality, hoursPerWeek, subjectName, weekTopic, previousWeekTopic, previousDocument, techStack, include } = await request.json() as {
+        const {
+            type, topic, modality, hoursPerWeek, subjectName, weekTopic,
+            previousWeekTopic, nextWeekTopic, exerciseContext, projectContext,
+            previousDocument, techStack, include,
+        } = await request.json() as {
             type: string;
             topic?: string;
             modality?: string;
@@ -395,6 +434,9 @@ export async function POST(request: NextRequest) {
             subjectName?: string;
             weekTopic?: string;
             previousWeekTopic?: string;
+            nextWeekTopic?: string;
+            exerciseContext?: string;
+            projectContext?: string;
             previousDocument?: string;
             techStack?: string;
             include?: string[];
@@ -413,6 +455,9 @@ export async function POST(request: NextRequest) {
                 subjectName,
                 weekTopic,
                 previousWeekTopic?.trim() || undefined,
+                nextWeekTopic?.trim() || undefined,
+                exerciseContext?.trim() || undefined,
+                projectContext?.trim() || undefined,
                 techStack?.trim() || undefined,
                 {
                     guionDocente: includeList.includes('guionDocente'),

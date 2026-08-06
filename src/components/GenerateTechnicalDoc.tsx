@@ -136,6 +136,18 @@ export default function GenerateTechnicalDoc({ subjectId, subjectName, currentDo
                             </button>
                         </div>
 
+                        {/* Documento actual — antes no había forma de verlo sin generar uno nuevo encima */}
+                        {hasPrevious && (
+                            <details open className="rounded-lg border border-gray-200 bg-gray-50">
+                                <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-gray-700">
+                                    Documento técnico actual
+                                </summary>
+                                <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap wrap-break-word border-t border-gray-200 px-3 py-2 text-xs text-gray-700 font-mono">
+                                    {currentDocument}
+                                </pre>
+                            </details>
+                        )}
+
                         {/* Week topic */}
                         <div className="flex flex-col gap-1">
                             <label className="text-sm font-medium text-gray-700">Tema de la semana</label>
