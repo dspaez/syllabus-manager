@@ -211,8 +211,10 @@ const CLASS_KIT_PEDAGOGY =
     `nombres exactos de archivos, rutas, variables y comandos, nunca genérico ni superficial.\n\n` +
     `Principios pedagógicos OBLIGATORIOS, aplican a todas las materias:\n` +
     `- Muestra el problema antes que la solución (ej. el bug o dolor que motiva el concepto nuevo).\n` +
-    `- Conecta la clase explícitamente con la anterior cuando aplique (referencia el tema previo si el ` +
-    `contexto del tema de la semana lo sugiere).\n` +
+    `- Si en el mensaje te paso un bloque "Clase anterior", conectá explícitamente con ESE contenido real ` +
+    `(ej. un bullet de repaso que lo referencie, o una frase de transición en speakerNotes) — nunca lo ` +
+    `ignores si está presente. Si NO te paso ese bloque, no inventes ni asumas qué se vio antes: es la ` +
+    `primera clase del curso, o el docente no encontró una clase previa real que enlazar.\n` +
     `- Usa analogías del mundo real cuando ayuden a la intuición — nómbralas (ej. "Analogía del restaurante") ` +
     `para que el docente pueda referenciarlas rápido en clase.\n` +
     `- Prefiere código en vivo sobre slides cargadas de texto: las slides son guía, no el contenido completo. ` +
@@ -302,14 +304,25 @@ interface ClassKitInclude {
     guiaTecnica: boolean;
 }
 
+// Bloque de contexto real de la clase anterior — nunca se fabrica del lado del modelo. Viene
+// de la semana previa detectada en el plan (ver previousWeekTopicFor en units/[unitId]/page.tsx),
+// que el docente puede corregir o vaciar en el formulario porque el plan es dinámico y lo que
+// se dio en clase puede no coincidir con lo planeado. Si no hay dato real, el bloque se omite
+// del prompt por completo — el system prompt ya instruye a no inventar continuidad en ese caso.
+function previousClassBlock(previousWeekTopic?: string): string {
+    return previousWeekTopic?.trim() ? `\n\nClase anterior: ${previousWeekTopic.trim()}.` : '';
+}
+
 async function generateClassKit(
     subjectName: string,
     weekTopic: string,
+    previousWeekTopic: string | undefined,
     techStack: string | undefined,
     include: ClassKitInclude,
 ): Promise<ClassKitContent> {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const contextSuffix = techStackContext(techStack);
+    const previousSuffix = previousClassBlock(previousWeekTopic);
 
     async function callClaude<T>(label: string, system: string, userPrompt: string, schema: Parameters<typeof zodOutputFormat>[0]): Promise<T> {
         const stream = anthropic.messages.stream({
@@ -342,7 +355,7 @@ async function generateClassKit(
         return message.parsed_output as T;
     }
 
-    const slidesPrompt = `Materia: ${subjectName}. Tema de la clase de esta semana: ${weekTopic}.` + contextSuffix;
+    const slidesPrompt = `Materia: ${subjectName}. Tema de la clase de esta semana: ${weekTopic}.` + contextSuffix + previousSuffix;
     const { slides } = await callClaude<{ slides: ClassKitContent['slides'] }>(
         'slides', SLIDES_SYSTEM_PROMPT, slidesPrompt, SlidesOnlySchema,
     );
@@ -358,7 +371,7 @@ async function generateClassKit(
         .map((s, i) => `${i + 1}. [${s.layout}] ${'titulo' in s ? s.titulo : s.nombreAnalogia}`)
         .join('\n');
     const docsPrompt =
-        `Materia: ${subjectName}. Tema de la clase de esta semana: ${weekTopic}.` + contextSuffix +
+        `Materia: ${subjectName}. Tema de la clase de esta semana: ${weekTopic}.` + contextSuffix + previousSuffix +
         `\n\nSlides ya generadas (índice. [layout] título):\n${slidesSummary}`;
     const docsSchema = wantsGuion && wantsGuia
         ? z.object({ guionDocente: GuionDocenteSchema, guiaTecnica: GuiaTecnicaSchema })
@@ -374,13 +387,14 @@ async function generateClassKit(
 
 export async function POST(request: NextRequest) {
     try {
-        const { type, topic, modality, hoursPerWeek, subjectName, weekTopic, previousDocument, techStack, include } = await request.json() as {
+        const { type, topic, modality, hoursPerWeek, subjectName, weekTopic, previousWeekTopic, previousDocument, techStack, include } = await request.json() as {
             type: string;
             topic?: string;
             modality?: string;
             hoursPerWeek?: number;
             subjectName?: string;
             weekTopic?: string;
+            previousWeekTopic?: string;
             previousDocument?: string;
             techStack?: string;
             include?: string[];
@@ -395,10 +409,16 @@ export async function POST(request: NextRequest) {
             const includeList = Array.isArray(include) && include.length > 0
                 ? include
                 : ['slides', 'guionDocente', 'guiaTecnica'];
-            const content = await generateClassKit(subjectName, weekTopic, techStack?.trim() || undefined, {
-                guionDocente: includeList.includes('guionDocente'),
-                guiaTecnica: includeList.includes('guiaTecnica'),
-            });
+            const content = await generateClassKit(
+                subjectName,
+                weekTopic,
+                previousWeekTopic?.trim() || undefined,
+                techStack?.trim() || undefined,
+                {
+                    guionDocente: includeList.includes('guionDocente'),
+                    guiaTecnica: includeList.includes('guiaTecnica'),
+                },
+            );
             return NextResponse.json({ content });
         }
 

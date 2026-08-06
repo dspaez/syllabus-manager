@@ -10,6 +10,7 @@ interface Props {
     subjectName: string;
     weekNumber: number;
     weekTopic: string;
+    previousWeekTopic?: string | null;
     techStack?: string | null;
     accentColor?: string | null;
 }
@@ -17,11 +18,12 @@ interface Props {
 type Stage = 'form' | 'content' | 'files';
 type Theme = 'dark' | 'light';
 
-export default function GenerateClassKit({ weekId, subjectName, weekNumber, weekTopic, techStack, accentColor }: Props) {
+export default function GenerateClassKit({ weekId, subjectName, weekNumber, weekTopic, previousWeekTopic, techStack, accentColor }: Props) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const [stage, setStage] = useState<Stage>('form');
     const [topic, setTopic] = useState(weekTopic);
+    const [prevTopic, setPrevTopic] = useState(previousWeekTopic ?? '');
     const [theme, setTheme] = useState<Theme>('dark');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -37,6 +39,7 @@ export default function GenerateClassKit({ weekId, subjectName, weekNumber, week
     function reset() {
         setStage('form');
         setTopic(weekTopic);
+        setPrevTopic(previousWeekTopic ?? '');
         setTheme('dark');
         setIncludeGuion(true);
         setIncludeGuia(true);
@@ -68,6 +71,7 @@ export default function GenerateClassKit({ weekId, subjectName, weekNumber, week
                     type: 'class_kit',
                     subjectName,
                     weekTopic: topic.trim(),
+                    previousWeekTopic: prevTopic.trim() || undefined,
                     techStack: techStack ?? undefined,
                     include: [
                         'slides',
@@ -216,6 +220,20 @@ export default function GenerateClassKit({ weekId, subjectName, weekNumber, week
                                         onChange={(e) => setTopic(e.target.value)}
                                         className="resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                                     />
+                                </div>
+
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm font-medium text-gray-700">Clase anterior (para conectar el repaso)</label>
+                                    <textarea
+                                        rows={2}
+                                        value={prevTopic}
+                                        onChange={(e) => setPrevTopic(e.target.value)}
+                                        placeholder="No se detectó una semana anterior — se generará sin repaso conectado."
+                                        className="resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-gray-400"
+                                    />
+                                    <p className="text-xs text-gray-500">
+                                        Detectado automáticamente de la semana previa en el plan. Corregilo o vacialo si lo que se dio en clase cambió.
+                                    </p>
                                 </div>
 
                                 <div className="flex flex-col gap-1.5">

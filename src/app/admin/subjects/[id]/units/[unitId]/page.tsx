@@ -113,6 +113,46 @@ export default async function UnitPage({
     const u = unit as Unit;
     const s = subject as Subject | null;
     const accent = s?.color ?? '#2563eb';
+    const weeksList = (weeks as Week[] | null) ?? [];
+
+    // "Clase anterior" real (no una suposición del modelo): la semana con el número más alto
+    // por debajo del actual dentro de esta unidad — no `number - 1` a secas, porque las semanas
+    // se pueden borrar o reordenar (el curso es dinámico) y eso deja huecos en la numeración.
+    // Si esta es la primera semana de la unidad, la anterior real está en la ÚLTIMA semana de
+    // la unidad previa del mismo subject (por `order`) — una sola consulta extra, no por semana,
+    // ya que como mucho una semana de esta página necesita ese fallback.
+    function sameUnitPreviousWeek(week: Week): Week | null {
+        const earlier = weeksList.filter((w) => w.number < week.number);
+        if (earlier.length === 0) return null;
+        return earlier.reduce((max, w) => (w.number > max.number ? w : max));
+    }
+
+    let crossUnitPreviousWeek: { title: string | null; description: string | null } | null = null;
+    if (weeksList.some((w) => sameUnitPreviousWeek(w) === null)) {
+        const { data: subjectUnits } = await supabase
+            .from('units')
+            .select('id, order')
+            .eq('subject_id', id)
+            .order('order', { ascending: true });
+        const units = subjectUnits ?? [];
+        const currentIndex = units.findIndex((un) => un.id === unitId);
+        const prevUnit = currentIndex > 0 ? units[currentIndex - 1] : null;
+        if (prevUnit) {
+            const { data: prevWeeks } = await supabase
+                .from('weeks')
+                .select('title, description')
+                .eq('unit_id', prevUnit.id)
+                .order('number', { ascending: false })
+                .limit(1);
+            crossUnitPreviousWeek = prevWeeks?.[0] ?? null;
+        }
+    }
+
+    function previousWeekTopicFor(week: Week): string {
+        const prev = sameUnitPreviousWeek(week) ?? crossUnitPreviousWeek;
+        if (!prev) return '';
+        return [prev.title, prev.description].filter(Boolean).join(' — ');
+    }
 
     const totalMaterials = (weeks ?? []).reduce(
         (acc, w) => acc + (w.materials?.length ?? 0), 0
@@ -248,6 +288,7 @@ export default async function UnitPage({
                                             subjectName={s?.name ?? ''}
                                             weekNumber={week.number}
                                             weekTopic={[week.title ?? `Semana ${week.number}`, week.description].filter(Boolean).join(' — ')}
+                                            previousWeekTopic={previousWeekTopicFor(week) || null}
                                             techStack={s?.tech_stack ?? null}
                                             accentColor={s?.accent_color ?? null}
                                         />
