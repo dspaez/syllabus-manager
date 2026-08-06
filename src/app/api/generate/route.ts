@@ -420,12 +420,99 @@ async function generateClassKit(
     return { slides, ...docs };
 }
 
+interface RecentWeekSummary {
+    title: string | null;
+    description: string | null;
+    exerciseTitle: string | null;
+}
+
+const SuggestNextWeekSchema = z.object({
+    title: z.string().describe('Título breve y concreto de la próxima clase, como un título real de plan curricular.'),
+    description: z.string().describe('2 a 4 líneas con los subtemas/contenidos concretos de esa clase.'),
+});
+
+const SUGGEST_NEXT_WEEK_SYSTEM_PROMPT =
+    `Sos un docente universitario experto decidiendo qué tema sigue en un curso que se ajusta ` +
+    `semana a semana según cómo avanza la clase real — no un plan fijo escrito una sola vez. ` +
+    `Proponés SOLO la próxima clase (título + descripción), nunca varias semanas de un plan, ni ` +
+    `contenido completo (eso se genera aparte, después).\n\n` +
+    `Reglas:\n` +
+    `- Si te paso contexto real (documento técnico del proyecto, o semanas/ejercicios anteriores), ` +
+    `el tema propuesto tiene que ser la continuación lógica de ESE contenido real — no repitas un ` +
+    `concepto ya cubierto ni propongas un salto que no tenga sentido con lo que ya se vio.\n` +
+    `- Si NO te paso contexto real (primera clase de la unidad o del curso), proponé un punto de ` +
+    `partida razonable según la materia, su descripción y el stack, sin inventar que hay historia previa.\n` +
+    `- El título debe ser corto y concreto, como el título de una clase real — no un objetivo genérico.\n` +
+    `- La descripción lista subtemas/contenidos concretos de esa clase (mismo estilo que un plan ` +
+    `curricular real), no una explicación de por qué la elegiste.`;
+
+async function generateSuggestNextWeek(params: {
+    subjectName: string;
+    subjectDescription?: string;
+    courseMode: string | null;
+    techStack?: string;
+    technicalDocument?: string;
+    recentWeeks?: RecentWeekSummary[];
+}): Promise<{ title: string; description: string }> {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const parts: string[] = [`Materia: ${params.subjectName}.`];
+    if (params.subjectDescription?.trim()) parts.push(`Descripción de la materia: ${params.subjectDescription.trim()}.`);
+    if (params.techStack?.trim()) parts.push(`Stack tecnológico: ${params.techStack.trim()}.`);
+
+    // Igual que en class_kit: 'topics' y 'project' nunca se mezclan — cada uno manda su propio
+    // contexto real, y si no hay ninguno (primera clase) se lo decimos explícitamente en vez de
+    // dejar que el modelo asuma que existe historia previa.
+    if (params.courseMode === 'project' && params.technicalDocument?.trim()) {
+        parts.push(`Documento técnico actual del proyecto (lo que efectivamente se construyó hasta ahora):\n${params.technicalDocument.trim()}`);
+    } else if (params.courseMode === 'topics' && params.recentWeeks && params.recentWeeks.length > 0) {
+        const recentText = params.recentWeeks
+            .map((w, i) => {
+                const bits = [`${i + 1}. ${w.title ?? '(sin título)'}`];
+                if (w.description) bits.push(`   ${w.description}`);
+                if (w.exerciseTitle) bits.push(`   Ejercicio ya dado: ${w.exerciseTitle}`);
+                return bits.join('\n');
+            })
+            .join('\n');
+        parts.push(`Últimas semanas ya dictadas (de más antigua a más reciente, máximo 4):\n${recentText}`);
+    } else {
+        parts.push('No hay clases anteriores registradas todavía — es el punto de partida del curso o de la unidad.');
+    }
+
+    const stream = anthropic.messages.stream({
+        model: 'claude-sonnet-5',
+        max_tokens: 2048,
+        system: SUGGEST_NEXT_WEEK_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: parts.join('\n\n') }],
+        output_config: { format: zodOutputFormat(SuggestNextWeekSchema) },
+    });
+
+    let message;
+    try {
+        message = await stream.finalMessage();
+    } catch (err) {
+        const raw = stream.receivedMessages.at(-1);
+        console.error(
+            `[generate:suggest_next_week] parseo falló — stop_reason=${raw?.stop_reason}, usage=${JSON.stringify(raw?.usage)}`,
+        );
+        throw err;
+    }
+    if (message.stop_reason === 'refusal') {
+        throw new Error('El modelo rechazó la solicitud');
+    }
+    if (!message.parsed_output) {
+        throw new Error('No se pudo parsear la sugerencia de próxima semana');
+    }
+    return message.parsed_output as { title: string; description: string };
+}
+
 export async function POST(request: NextRequest) {
     try {
         const {
             type, topic, modality, hoursPerWeek, subjectName, weekTopic,
             previousWeekTopic, nextWeekTopic, exerciseContext, projectContext,
             previousDocument, techStack, include,
+            subjectDescription, courseMode, technicalDocument, recentWeeks,
         } = await request.json() as {
             type: string;
             topic?: string;
@@ -440,7 +527,26 @@ export async function POST(request: NextRequest) {
             previousDocument?: string;
             techStack?: string;
             include?: string[];
+            subjectDescription?: string;
+            courseMode?: string | null;
+            technicalDocument?: string;
+            recentWeeks?: RecentWeekSummary[];
         };
+
+        if (type === 'suggest_next_week') {
+            if (!subjectName) {
+                return NextResponse.json({ error: 'Missing required field: subjectName' }, { status: 400 });
+            }
+            const result = await generateSuggestNextWeek({
+                subjectName,
+                subjectDescription: subjectDescription?.trim() || undefined,
+                courseMode: courseMode ?? null,
+                techStack: techStack?.trim() || undefined,
+                technicalDocument: technicalDocument?.trim() || undefined,
+                recentWeeks,
+            });
+            return NextResponse.json(result);
+        }
 
         if (type === 'class_kit') {
             if (!subjectName || !weekTopic) {
