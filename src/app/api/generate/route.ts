@@ -341,6 +341,17 @@ function currentContentBlock(exerciseContext?: string, projectContext?: string):
     return '';
 }
 
+// Solo para la llamada de slides: `technical_document` puede crecer sin límite semana a semana
+// (se extiende acumulativamente, nunca se resume) y mandarlo en las 2 llamadas de generateClassKit
+// paga su costo dos veces. Medido en real: agregarlo a la llamada de slides casi duplica su tiempo
+// (97s → 218s con un documento de ~2400 tokens) — con un documento más largo eso es justo lo que
+// produjo un 504 real en producción (300s de límite de Vercel). `exerciseContext` no tiene este
+// problema (es un solo ejercicio, tamaño acotado) así que las slides de tipo "codigo" lo siguen
+// recibiendo — el recorte es específico a `projectContext`.
+function slidesContentBlock(exerciseContext?: string): string {
+    return exerciseContext?.trim() ? `\n\nEjercicio de clase real (ya generado para esta semana):\n${exerciseContext.trim()}` : '';
+}
+
 async function generateClassKit(
     subjectName: string,
     weekTopic: string,
@@ -356,6 +367,7 @@ async function generateClassKit(
     const previousSuffix = previousClassBlock(previousWeekTopic);
     const nextSuffix = nextClassBlock(nextWeekTopic);
     const currentContentSuffix = currentContentBlock(exerciseContext, projectContext);
+    const slidesContentSuffix = slidesContentBlock(exerciseContext);
 
     async function callClaude<T>(label: string, system: string, userPrompt: string, schema: Parameters<typeof zodOutputFormat>[0]): Promise<T> {
         const stream = anthropic.messages.stream({
@@ -389,7 +401,7 @@ async function generateClassKit(
     }
 
     const slidesPrompt = `Materia: ${subjectName}. Tema de la clase de esta semana: ${weekTopic}.` +
-        contextSuffix + previousSuffix + nextSuffix + currentContentSuffix;
+        contextSuffix + previousSuffix + nextSuffix + slidesContentSuffix;
     const { slides } = await callClaude<{ slides: ClassKitContent['slides'] }>(
         'slides', SLIDES_SYSTEM_PROMPT, slidesPrompt, SlidesOnlySchema,
     );
