@@ -45,6 +45,7 @@ type Subject = {
     name: string;
     description: string | null;
     technical_document: string | null;
+    technical_document_week_id: string | null;
     course_mode: string | null;
     tech_stack: string | null;
     accent_color: string | null;
@@ -102,7 +103,7 @@ export default async function UnitPage({
             .select('*, materials(*)')
             .eq('unit_id', unitId)
             .order('number', { ascending: true }),
-        supabase.from('subjects').select('color, name, description, technical_document, course_mode, tech_stack, accent_color').eq('id', id).single(),
+        supabase.from('subjects').select('color, name, description, technical_document, technical_document_week_id, course_mode, tech_stack, accent_color').eq('id', id).single(),
     ]);
 
     if (unitError || !unit) notFound();
@@ -118,6 +119,22 @@ export default async function UnitPage({
     const s = subject as Subject | null;
     const accent = s?.color ?? '#2563eb';
     const weeksList = (weeks as Week[] | null) ?? [];
+
+    // "Última actualización: semana X — unidad" del documento técnico actual — dato explícito
+    // (technical_document_week_id), nunca inferido por número más alto o coincidencia de texto:
+    // eso se rompería si alguna vez se regenera una semana anterior fuera de orden.
+    let technicalDocLastUpdatedLabel: string | null = null;
+    if (s?.course_mode === 'project' && s.technical_document_week_id) {
+        const { data: lastUpdatedWeek } = await supabase
+            .from('weeks')
+            .select('number, units(name)')
+            .eq('id', s.technical_document_week_id)
+            .single();
+        if (lastUpdatedWeek) {
+            const unitName = (lastUpdatedWeek.units as unknown as { name: string } | null)?.name;
+            technicalDocLastUpdatedLabel = `Semana ${lastUpdatedWeek.number}` + (unitName ? ` — ${unitName}` : '');
+        }
+    }
 
     // "Clase anterior"/"próxima clase" reales (no una suposición del modelo): la semana con el
     // número más alto por debajo (o más bajo por encima) del actual dentro de esta unidad — no
@@ -409,6 +426,8 @@ export default async function UnitPage({
                                                 techStack={s.tech_stack}
                                                 weekTopic={[week.title ?? `Semana ${week.number}`, week.description].filter(Boolean).join(' — ')}
                                                 weekId={week.id}
+                                                lastUpdatedLabel={technicalDocLastUpdatedLabel}
+                                                hasSnapshot={Boolean(week.technical_document_snapshot)}
                                             />
                                         )}
                                         <Link

@@ -11,9 +11,16 @@ interface Props {
     techStack: string | null;
     weekTopic: string;
     weekId: string;
+    /** "Semana X — Nombre de unidad" de a qué semana corresponde currentDocument, o null si no
+     *  hay dato (nunca se generó, o el subject nunca guardó technical_document_week_id). */
+    lastUpdatedLabel: string | null;
+    /** Si ESTA semana (weekId) ya tiene technical_document_snapshot propio. */
+    hasSnapshot: boolean;
 }
 
-export default function GenerateTechnicalDoc({ subjectId, subjectName, currentDocument, techStack, weekTopic, weekId }: Props) {
+export default function GenerateTechnicalDoc({
+    subjectId, subjectName, currentDocument, techStack, weekTopic, weekId, lastUpdatedLabel, hasSnapshot,
+}: Props) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const [topic, setTopic] = useState(weekTopic);
@@ -91,6 +98,7 @@ export default function GenerateTechnicalDoc({ subjectId, subjectName, currentDo
                     .update({
                         technical_document: draft,
                         technical_document_updated_at: new Date().toISOString(),
+                        technical_document_week_id: weekId,
                     })
                     .eq('id', subjectId),
                 supabase
@@ -114,13 +122,23 @@ export default function GenerateTechnicalDoc({ subjectId, subjectName, currentDo
         <>
             <button
                 onClick={handleOpen}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 transition-colors"
-                title={hasPrevious ? 'Extender el documento técnico del proyecto' : 'Crear el documento técnico del proyecto'}
+                className="relative inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 transition-colors"
+                title={
+                    (hasSnapshot ? 'Esta semana ya tiene documento técnico propio anclado. ' : 'Esta semana todavía no tiene documento técnico propio — el class kit no tendrá contexto real de proyecto. ') +
+                    (hasPrevious ? 'Extender el documento técnico del proyecto' : 'Crear el documento técnico del proyecto')
+                }
             >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="size-3.5">
                     <path fillRule="evenodd" d="M4 2a1.5 1.5 0 0 0-1.5 1.5v9A1.5 1.5 0 0 0 4 14h8a1.5 1.5 0 0 0 1.5-1.5V6.621a1.5 1.5 0 0 0-.44-1.06L9.94 2.439A1.5 1.5 0 0 0 8.878 2H4Zm1 5.75A.75.75 0 0 1 5.75 7h4.5a.75.75 0 0 1 0 1.5h-4.5A.75.75 0 0 1 5 7.75Zm0 3a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
                 </svg>
                 Doc. técnico
+                {hasSnapshot && (
+                    <span className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" className="size-2 text-white">
+                            <path d="M2.5 6.25L4.75 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    </span>
+                )}
             </button>
 
             {open && (
@@ -153,6 +171,9 @@ export default function GenerateTechnicalDoc({ subjectId, subjectName, currentDo
                             <details open className="rounded-lg border border-gray-200 bg-gray-50">
                                 <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-gray-700">
                                     Documento técnico actual
+                                    {lastUpdatedLabel && (
+                                        <span className="ml-2 font-normal text-gray-500">— Última actualización: {lastUpdatedLabel}</span>
+                                    )}
                                 </summary>
                                 <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap wrap-break-word border-t border-gray-200 px-3 py-2 text-xs text-gray-700 font-mono">
                                     {currentDocument}
