@@ -28,6 +28,7 @@ type Week = {
     number: number;
     title: string | null;
     description: string | null;
+    technical_document_snapshot: string | null;
     materials: Material[];
 };
 
@@ -396,7 +397,7 @@ export default async function UnitPage({
                                             previousWeekTopic={previousWeekTopicFor(week) || null}
                                             nextWeekTopic={nextWeekTopicFor(week) || null}
                                             exerciseContext={s?.course_mode === 'topics' ? currentExerciseContextFor(week) : null}
-                                            projectContext={s?.course_mode === 'project' ? s.technical_document : null}
+                                            projectContext={s?.course_mode === 'project' ? week.technical_document_snapshot : null}
                                             techStack={s?.tech_stack ?? null}
                                             accentColor={s?.accent_color ?? null}
                                         />
@@ -407,6 +408,7 @@ export default async function UnitPage({
                                                 currentDocument={s.technical_document}
                                                 techStack={s.tech_stack}
                                                 weekTopic={[week.title ?? `Semana ${week.number}`, week.description].filter(Boolean).join(' — ')}
+                                                weekId={week.id}
                                             />
                                         )}
                                         <Link

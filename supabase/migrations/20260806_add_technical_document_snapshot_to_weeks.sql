@@ -1,0 +1,11 @@
+-- Snapshot del documento técnico del proyecto, congelado en el momento en que se generó/extendió
+-- PARA esta semana específica — a diferencia de subjects.technical_document (mutable, siempre el
+-- estado más reciente), esto evita que class_kit de una semana anterior lea arquitectura de
+-- semanas futuras que en esa clase real todavía no existía.
+--
+-- Semanas con technical_document generado ANTES de esta migración quedan con snapshot NULL a
+-- propósito: no hay forma de reconstruir qué decía el documento en ese momento (se sobrescribía
+-- sin historial), y un documento potencialmente anacrónico es peor que ninguno. class_kit para
+-- esas semanas legacy simplemente no recibe contexto de proyecto real, igual que si nunca
+-- hubiera existido un documento técnico.
+alter table weeks add column technical_document_snapshot text;

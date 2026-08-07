@@ -10,9 +10,10 @@ interface Props {
     currentDocument: string | null;
     techStack: string | null;
     weekTopic: string;
+    weekId: string;
 }
 
-export default function GenerateTechnicalDoc({ subjectId, subjectName, currentDocument, techStack, weekTopic }: Props) {
+export default function GenerateTechnicalDoc({ subjectId, subjectName, currentDocument, techStack, weekTopic, weekId }: Props) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const [topic, setTopic] = useState(weekTopic);
@@ -80,15 +81,26 @@ export default function GenerateTechnicalDoc({ subjectId, subjectName, currentDo
 
         try {
             const supabase = createClient();
-            const { error: dbError } = await supabase
-                .from('subjects')
-                .update({
-                    technical_document: draft,
-                    technical_document_updated_at: new Date().toISOString(),
-                })
-                .eq('id', subjectId);
+            // Se guarda en 2 lugares: subjects.technical_document (el estado actual/completo,
+            // usado por el visor y como base para seguir extendiendo) y
+            // weeks.technical_document_snapshot (congelado para ESTA semana — evita que
+            // class_kit de una semana anterior lea arquitectura de semanas futuras).
+            const [{ error: subjectError }, { error: weekError }] = await Promise.all([
+                supabase
+                    .from('subjects')
+                    .update({
+                        technical_document: draft,
+                        technical_document_updated_at: new Date().toISOString(),
+                    })
+                    .eq('id', subjectId),
+                supabase
+                    .from('weeks')
+                    .update({ technical_document_snapshot: draft })
+                    .eq('id', weekId),
+            ]);
 
-            if (dbError) throw dbError;
+            if (subjectError) throw subjectError;
+            if (weekError) throw weekError;
             setSaved(true);
             router.refresh();
         } catch (err) {
