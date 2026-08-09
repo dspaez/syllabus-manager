@@ -120,14 +120,19 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
         }
     }
 
+    // Solo crea la ESTRUCTURA (unidades) — el plan completo (unidades, semanas, temas, profundidad)
+    // sigue visible/copiable acá mismo como el documento formal a presentar, pero deliberadamente
+    // no se escribe como title/description de cada semana real: en la práctica el temario semanal
+    // se ajusta clase a clase, no sigue este plan al pie de la letra. Las semanas reales se crean
+    // con "Sugerir próxima semana" (o a mano), nunca precargadas acá — así esa herramienta decide
+    // de verdad qué sigue, en vez de competir contra 16 títulos ya puestos por este generador.
     async function handleSave() {
         if (!plan) return;
         setError(null);
         const supabase = createClient();
         try {
-            // 1 — Insert units
             setSavingStep('Creando unidades...');
-            const { data: insertedUnits, error: unitsError } = await supabase
+            const { error: unitsError } = await supabase
                 .from('units')
                 .insert(
                     plan.units.map((u) => ({
@@ -136,28 +141,9 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
                         order: u.order,
                         description: null,
                     }))
-                )
-                .select('id, order');
+                );
 
             if (unitsError) throw new Error(unitsError.message);
-            if (!insertedUnits) throw new Error('No se recibieron las unidades creadas');
-
-            const unitIdByOrder: Record<number, string> = {};
-            for (const u of insertedUnits) unitIdByOrder[u.order] = u.id;
-
-            // 2 — Insert weeks
-            setSavingStep('Creando semanas...');
-            const weekRows = plan.units.flatMap((u) =>
-                u.weeks.map((w) => ({
-                    unit_id: unitIdByOrder[u.order],
-                    number: w.number,
-                    title: w.title,
-                    description: w.topics.join(', '),
-                }))
-            );
-
-            const { error: weeksError } = await supabase.from('weeks').insert(weekRows);
-            if (weeksError) throw new Error(weeksError.message);
 
             setSaved(true);
             router.refresh();
@@ -352,23 +338,28 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
                                     {/* Save */}
                                     {saved ? (
                                         <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm px-4 py-3 rounded-xl font-medium">
-                                            ✅ {plan.units.length} unidades y {totalWeeks} semanas creadas correctamente.
+                                            ✅ {plan.units.length} unidades creadas correctamente. Las semanas no se precargan — usá &quot;Sugerir próxima semana&quot; en la materia para irlas armando a medida que avanza el curso real.
                                         </div>
                                     ) : (
-                                        <button
-                                            onClick={handleSave}
-                                            disabled={!!savingStep}
-                                            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors disabled:cursor-not-allowed"
-                                        >
-                                            {savingStep ? (
-                                                <>
-                                                    <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                                                    {savingStep}
-                                                </>
-                                            ) : (
-                                                `📥 Crear todo (${plan.units.length} unidades, ${totalWeeks} semanas)`
-                                            )}
-                                        </button>
+                                        <div className="space-y-2">
+                                            <p className="text-xs text-gray-500">
+                                                Se crean las {plan.units.length} unidades. Este plan de {totalWeeks} semanas queda como referencia acá arriba (para presentar), pero las semanas reales no se precargan.
+                                            </p>
+                                            <button
+                                                onClick={handleSave}
+                                                disabled={!!savingStep}
+                                                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors disabled:cursor-not-allowed"
+                                            >
+                                                {savingStep ? (
+                                                    <>
+                                                        <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                                                        {savingStep}
+                                                    </>
+                                                ) : (
+                                                    `📥 Crear unidades (${plan.units.length})`
+                                                )}
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             )}
