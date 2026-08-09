@@ -224,6 +224,52 @@ export default async function UnitPage({
         return null;
     }
 
+    // Contexto real para "Generar con IA" → Ejercicios, condicionado por course_mode (mismo
+    // mecanismo que ya usa class_kit, nunca mezclados): 'project' usa el snapshot más reciente
+    // DISPONIBLE hasta esta semana (no necesariamente el propio — si esta semana todavía no
+    // extendió el doc técnico, cae al de la última semana anterior que sí lo tenga, nunca a uno
+    // futuro); 'topics' usa los títulos de las últimas semanas anteriores. Requiere mirar más
+    // allá de esta unidad, así que se trae aparte con una sola consulta subject-wide.
+    let subjectWeeksOrdered: { id: string; number: number; title: string | null; technical_document_snapshot: string | null }[] = [];
+    if (s?.course_mode === 'project' || s?.course_mode === 'topics') {
+        const { data: subjectUnitsOrdered } = await supabase
+            .from('units')
+            .select('id, order')
+            .eq('subject_id', id)
+            .order('order', { ascending: true });
+        const orderedUnitIds = (subjectUnitsOrdered ?? []).map((u) => u.id);
+        if (orderedUnitIds.length > 0) {
+            const { data: subjectWeeksRaw } = await supabase
+                .from('weeks')
+                .select('id, number, title, technical_document_snapshot, unit_id')
+                .in('unit_id', orderedUnitIds);
+            const unitIndexById = new Map(orderedUnitIds.map((uid, i) => [uid, i]));
+            subjectWeeksOrdered = (subjectWeeksRaw ?? []).slice().sort((a, b) => {
+                const ai = unitIndexById.get(a.unit_id) ?? 0;
+                const bi = unitIndexById.get(b.unit_id) ?? 0;
+                return ai !== bi ? ai - bi : a.number - b.number;
+            });
+        }
+    }
+
+    function exerciseProjectContextFor(week: Week): string | null {
+        const idx = subjectWeeksOrdered.findIndex((w) => w.id === week.id);
+        if (idx === -1) return null;
+        for (let i = idx; i >= 0; i--) {
+            if (subjectWeeksOrdered[i].technical_document_snapshot) return subjectWeeksOrdered[i].technical_document_snapshot;
+        }
+        return null;
+    }
+
+    function exercisePreviousTitlesFor(week: Week): string[] {
+        const idx = subjectWeeksOrdered.findIndex((w) => w.id === week.id);
+        if (idx === -1) return [];
+        return subjectWeeksOrdered
+            .slice(Math.max(0, idx - 4), idx)
+            .map((w) => w.title)
+            .filter((t): t is string => Boolean(t));
+    }
+
     const totalMaterials = (weeks ?? []).reduce(
         (acc, w) => acc + (w.materials?.length ?? 0), 0
     );
@@ -352,7 +398,15 @@ export default async function UnitPage({
                                                 {pubCount}/{matCount} pub.
                                             </span>
                                         )}
-                                        <GenerateWithAI weekId={week.id} subjectId={id} unitId={unitId} techStack={s?.tech_stack ?? null} />
+                                        <GenerateWithAI
+                                            weekId={week.id}
+                                            subjectId={id}
+                                            unitId={unitId}
+                                            techStack={s?.tech_stack ?? null}
+                                            courseMode={s?.course_mode ?? null}
+                                            exerciseProjectContext={exerciseProjectContextFor(week)}
+                                            exercisePreviousTitles={exercisePreviousTitlesFor(week)}
+                                        />
                                         <GenerateClassKit
                                             weekId={week.id}
                                             subjectName={s?.name ?? ''}

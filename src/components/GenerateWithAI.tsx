@@ -45,6 +45,12 @@ interface Props {
     subjectId: string;
     unitId: string;
     techStack?: string | null;
+    courseMode?: string | null;
+    /** 'project': technical_document_snapshot más reciente hasta esta semana (no necesariamente
+     *  el propio — cae al más reciente disponible si esta semana todavía no tiene uno). */
+    exerciseProjectContext?: string | null;
+    /** 'topics': títulos de hasta las últimas 4 semanas anteriores ya dictadas. */
+    exercisePreviousTitles?: string[];
 }
 
 const TYPE_LABELS: Record<GenerateType, string> = {
@@ -153,7 +159,7 @@ function ResultView({ type, result }: { type: GenerateType; result: GenerateResu
     return <GuideView data={result as GuideResult} />;
 }
 
-export default function GenerateWithAI({ weekId, techStack }: Props) {
+export default function GenerateWithAI({ weekId, techStack, courseMode, exerciseProjectContext, exercisePreviousTitles }: Props) {
     const [open, setOpen] = useState(false);
     const [type, setType] = useState<GenerateType>('slides');
     const [topic, setTopic] = useState('');
@@ -189,7 +195,16 @@ export default function GenerateWithAI({ weekId, techStack }: Props) {
             const res = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type, topic: topic.trim(), techStack: techStack ?? undefined }),
+                body: JSON.stringify({
+                    type,
+                    topic: topic.trim(),
+                    techStack: techStack ?? undefined,
+                    ...(type === 'exercises' ? {
+                        courseMode: courseMode ?? undefined,
+                        exerciseProjectContext: courseMode === 'project' ? (exerciseProjectContext ?? undefined) : undefined,
+                        exercisePreviousTitles: courseMode === 'topics' ? exercisePreviousTitles : undefined,
+                    } : {}),
+                }),
             });
 
             if (!res.ok) {
@@ -293,6 +308,25 @@ export default function GenerateWithAI({ weekId, techStack }: Props) {
                                 />
                             </div>
                         </div>
+
+                        {/* Contexto real detectado — solo aplica al tipo "exercises", igual que
+                            class_kit/Doc. técnico: 'project' ancla al proyecto real, 'topics' a lo
+                            ya dictado, nunca mezclados. */}
+                        {type === 'exercises' && (
+                            courseMode === 'project' && exerciseProjectContext ? (
+                                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800 border border-emerald-200">
+                                    ✓ Se va a anclar al documento técnico real del proyecto (lo más reciente disponible hasta esta semana).
+                                </p>
+                            ) : courseMode === 'topics' && exercisePreviousTitles && exercisePreviousTitles.length > 0 ? (
+                                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800 border border-emerald-200">
+                                    ✓ Se va a apoyar en las últimas {exercisePreviousTitles.length} semana{exercisePreviousTitles.length === 1 ? '' : 's'} ya dictadas, para no repetir temas.
+                                </p>
+                            ) : (
+                                <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500 border border-gray-200">
+                                    No hay contexto real todavía para esta semana — se va a proponer un ejercicio genérico.
+                                </p>
+                            )
+                        )}
 
                         <button
                             onClick={handleGenerate}

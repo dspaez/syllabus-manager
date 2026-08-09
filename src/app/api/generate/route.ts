@@ -131,9 +131,33 @@ const PROMPTS: Record<string, (topic: string, techStack?: string) => string> = {
         `\nCada slide: máximo 5 puntos, cada punto máximo 2 líneas, sin markdown, con terminología técnica precisa. ` +
         `Responde SOLO en JSON sin markdown ni bloques de código: ` +
         `{ "slides": [{ "title": "", "points": [], "keyword": "" }] }`,
-    exercises: (topic, techStack) =>
+    guide: (topic) =>
+        `Genera una guía de estudio sobre ${topic} con: introducción, ` +
+        `conceptos clave, ejemplos y resumen. Responde en español en formato JSON: ` +
+        `{ "introduction": "", "concepts": [{ "name": "", "explanation": "" }], "examples": [], "summary": "" }`,
+};
+
+// Separado del mapa genérico PROMPTS (a diferencia de slides/guide) porque necesita contexto
+// real por course_mode — mismo mecanismo que class_kit, nunca mezclados: 'project' ancla al
+// documento técnico real (el más reciente disponible hasta esta semana, no necesariamente el
+// propio); 'topics' ancla a los títulos de las últimas semanas ya dictadas, para no repetir
+// conceptos. Si no hay contexto real, no se inventa que sí existe — mismo principio de siempre.
+function exercisesPrompt(
+    topic: string,
+    techStack: string | undefined,
+    courseMode: string | null | undefined,
+    exerciseProjectContext: string | undefined,
+    exercisePreviousTitles: string[] | undefined,
+): string {
+    const contextBlock = courseMode === 'project' && exerciseProjectContext?.trim()
+        ? `\nContexto real del proyecto hasta este punto del curso (arquitectura y convenciones ya construidas — el ejercicio tiene que ser coherente con esto, un dominio/stack paralelo NO):\n${exerciseProjectContext.trim()}\n`
+        : courseMode === 'topics' && exercisePreviousTitles && exercisePreviousTitles.length > 0
+        ? `\nTemas ya dictados en semanas anteriores (no repitas conceptos ya cubiertos, construí sobre ellos cuando aplique): ${exercisePreviousTitles.join(', ')}.\n`
+        : '';
+    return (
         `Eres un docente universitario diseñando el ejercicio principal de una clase de programación sobre ${topic}. ` +
         techStackContext(techStack) +
+        contextBlock +
         `\nGenera:\n` +
         `1. UN ejercicio principal de clase (ejercicioClase), no una lista de ejercicios sueltos. Debe tener:\n` +
         `   - titulo: título breve del ejercicio.\n` +
@@ -149,12 +173,9 @@ const PROMPTS: Record<string, (topic: string, techStack?: string) => string> = {
         `No son simplificaciones del ejercicio de clase — son ejercicios paralelos de dificultad equivalente.\n` +
         `Responde en español, SOLO en formato JSON sin markdown ni bloques de código: ` +
         `{ "ejercicioClase": { "titulo": "", "contexto": "", "requerimientos": [], "solucionDocente": "" }, ` +
-        `"ejerciciosTarea": [{ "titulo": "", "contexto": "", "requerimientos": [], "solucionDocente": "" }] }`,
-    guide: (topic) =>
-        `Genera una guía de estudio sobre ${topic} con: introducción, ` +
-        `conceptos clave, ejemplos y resumen. Responde en español en formato JSON: ` +
-        `{ "introduction": "", "concepts": [{ "name": "", "explanation": "" }], "examples": [], "summary": "" }`,
-};
+        `"ejerciciosTarea": [{ "titulo": "", "contexto": "", "requerimientos": [], "solucionDocente": "" }] }`
+    );
+}
 
 function technicalDocPrompt(subjectName: string, weekTopic: string, previousDocument?: string, techStack?: string): string {
     if (previousDocument) {
@@ -525,6 +546,7 @@ export async function POST(request: NextRequest) {
             previousWeekTopic, nextWeekTopic, exerciseContext, projectContext,
             previousDocument, techStack, include,
             subjectDescription, courseMode, technicalDocument, recentWeeks,
+            exerciseProjectContext, exercisePreviousTitles,
         } = await request.json() as {
             type: string;
             topic?: string;
@@ -543,6 +565,8 @@ export async function POST(request: NextRequest) {
             courseMode?: string | null;
             technicalDocument?: string;
             recentWeeks?: RecentWeekSummary[];
+            exerciseProjectContext?: string;
+            exercisePreviousTitles?: string[];
         };
 
         if (type === 'suggest_next_week') {
@@ -638,9 +662,32 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(parsed);
         }
 
+        if (type === 'exercises') {
+            if (!topic) {
+                return NextResponse.json({ error: 'Missing required field: topic' }, { status: 400 });
+            }
+            const model = genAI.getGenerativeModel({
+                model: 'gemini-2.5-flash',
+                generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS.exercises ?? DEFAULT_MAX_OUTPUT_TOKENS },
+            });
+            const result = await model.generateContent(
+                exercisesPrompt(topic, techStack?.trim() || undefined, courseMode, exerciseProjectContext, exercisePreviousTitles),
+            );
+            const text = result.response.text();
+
+            let parsed;
+            try {
+                parsed = repairTruncatedJson(text);
+            } catch (err) {
+                console.error(`[generate:exercises] parseo falló — finishReason=${result.response.candidates?.[0]?.finishReason}, length=${text.length}`);
+                throw err;
+            }
+            return NextResponse.json(parsed);
+        }
+
         const promptFn = PROMPTS[type];
         if (!promptFn) {
-            return NextResponse.json({ error: `Invalid type. Must be one of: curriculum, ${Object.keys(PROMPTS).join(', ')}` }, { status: 400 });
+            return NextResponse.json({ error: `Invalid type. Must be one of: curriculum, exercises, ${Object.keys(PROMPTS).join(', ')}` }, { status: 400 });
         }
 
         const model = genAI.getGenerativeModel({
