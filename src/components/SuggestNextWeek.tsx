@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 
 interface RecentWeek {
@@ -11,7 +12,9 @@ interface RecentWeek {
 }
 
 interface Props {
+    subjectId: string;
     unitId: string;
+    targetUnitName: string;
     targetWeekId: string | null;
     targetWeekNumber: number;
     subjectName: string;
@@ -26,7 +29,7 @@ interface Props {
 type Stage = 'idle' | 'result';
 
 export default function SuggestNextWeek({
-    unitId, targetWeekId, targetWeekNumber, subjectName, subjectDescription,
+    subjectId, unitId, targetUnitName, targetWeekId, targetWeekNumber, subjectName, subjectDescription,
     courseMode, techStack, technicalDocument, recentWeeks, accent,
 }: Props) {
     const router = useRouter();
@@ -155,8 +158,8 @@ export default function SuggestNextWeek({
                                 </h2>
                                 <p className="text-xs text-gray-500 mt-0.5">
                                     {targetWeekId
-                                        ? 'Va a completar esta semana (todavía sin materiales).'
-                                        : 'No hay semana siguiente creada — se va a crear una nueva.'}
+                                        ? `Va a completar esta semana en ${targetUnitName} (todavía sin materiales).`
+                                        : `No hay semana siguiente creada — se va a crear en ${targetUnitName}.`}
                                 </p>
                             </div>
                             <button
@@ -229,8 +232,11 @@ export default function SuggestNextWeek({
                                         {loading ? 'Regenerando...' : 'Regenerar'}
                                     </button>
                                     {saved ? (
-                                        <p className="flex-1 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 border border-green-200 text-center">
+                                        <p className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 border border-green-200 text-center">
                                             ✓ Semana {targetWeekNumber} guardada
+                                            <Link href={`/admin/subjects/${subjectId}/units/${unitId}`} className="font-semibold underline">
+                                                Ver semana →
+                                            </Link>
                                         </p>
                                     ) : (
                                         <button

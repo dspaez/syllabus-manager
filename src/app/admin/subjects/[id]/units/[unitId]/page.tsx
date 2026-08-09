@@ -10,7 +10,6 @@ import EditMaterialName from '@/components/EditMaterialName';
 import GenerateAllContent from '@/components/GenerateAllContent';
 import GenerateTechnicalDoc from '@/components/GenerateTechnicalDoc';
 import GenerateClassKit from '@/components/GenerateClassKit';
-import SuggestNextWeek from '@/components/SuggestNextWeek';
 import { getMaterialBadge } from '@/lib/materialBadge';
 
 type Material = {
@@ -43,7 +42,6 @@ type Unit = {
 type Subject = {
     color: string | null;
     name: string;
-    description: string | null;
     technical_document: string | null;
     technical_document_week_id: string | null;
     course_mode: string | null;
@@ -103,7 +101,7 @@ export default async function UnitPage({
             .select('*, materials(*)')
             .eq('unit_id', unitId)
             .order('number', { ascending: true }),
-        supabase.from('subjects').select('color, name, description, technical_document, technical_document_week_id, course_mode, tech_stack, accent_color').eq('id', id).single(),
+        supabase.from('subjects').select('color, name, technical_document, technical_document_week_id, course_mode, tech_stack, accent_color').eq('id', id).single(),
     ]);
 
     if (unitError || !unit) notFound();
@@ -226,45 +224,6 @@ export default async function UnitPage({
         return null;
     }
 
-    // Título del ejercicio real ya dado, sin el código completo — para "Sugerir próxima semana"
-    // solo hace falta saber QUÉ se dio, no reconstruirlo (eso es trabajo de currentExerciseContextFor).
-    function exerciseTitleFor(week: Week): string | null {
-        for (const m of week.materials ?? []) {
-            if (m.source !== 'ai' || !m.description) continue;
-            try {
-                const parsed = JSON.parse(m.description) as { ejercicioClase?: { titulo?: string } };
-                if (parsed.ejercicioClase?.titulo) return parsed.ejercicioClase.titulo;
-            } catch {
-                continue;
-            }
-        }
-        return null;
-    }
-
-    // "Sugerir próxima semana": nunca sobrescribe una semana con materiales ya generados, sin
-    // importar si su título vino de curriculum o de edición manual — opera siempre sobre la
-    // primera semana VACÍA después de la última con contenido real dentro de esta unidad (mismo
-    // alcance que "+ Nueva semana"), o crea una si no existe ninguna todavía.
-    const weeksWithContent = weeksList.filter((w) => (w.materials?.length ?? 0) > 0);
-    const lastContentNumber = weeksWithContent.length > 0
-        ? Math.max(...weeksWithContent.map((w) => w.number))
-        : 0;
-    const firstEmptyAfterContent = weeksList
-        .filter((w) => w.number > lastContentNumber && (w.materials?.length ?? 0) === 0)
-        .reduce<Week | null>((min, w) => (!min || w.number < min.number ? w : min), null);
-    const nextWeekNumber = weeksList.length > 0 ? Math.max(...weeksList.map((w) => w.number)) + 1 : 1;
-
-    const suggestTargetWeekId = firstEmptyAfterContent?.id ?? null;
-    const suggestTargetWeekNumber = firstEmptyAfterContent?.number ?? nextWeekNumber;
-    // Últimas hasta 4 semanas antes del objetivo, de más antigua a más reciente — no todo el
-    // historial, para no hacer crecer el prompt sin control en materias largas.
-    const suggestRecentWeeks = weeksList
-        .filter((w) => w.number < suggestTargetWeekNumber)
-        .sort((a, b) => b.number - a.number)
-        .slice(0, 4)
-        .reverse()
-        .map((w) => ({ title: w.title, description: w.description, exerciseTitle: exerciseTitleFor(w) }));
-
     const totalMaterials = (weeks ?? []).reduce(
         (acc, w) => acc + (w.materials?.length ?? 0), 0
     );
@@ -302,18 +261,6 @@ export default async function UnitPage({
 
                     <div className="flex items-center gap-2 flex-wrap shrink-0">
                         <GenerateAllContent unitId={unitId} subjectId={id} techStack={s?.tech_stack ?? null} />
-                        <SuggestNextWeek
-                            unitId={unitId}
-                            targetWeekId={suggestTargetWeekId}
-                            targetWeekNumber={suggestTargetWeekNumber}
-                            subjectName={s?.name ?? ''}
-                            subjectDescription={s?.description ?? null}
-                            courseMode={s?.course_mode ?? null}
-                            techStack={s?.tech_stack ?? null}
-                            technicalDocument={s?.technical_document ?? null}
-                            recentWeeks={suggestRecentWeeks}
-                            accent={accent}
-                        />
                         <Link
                             href={`/admin/subjects/${id}/units/${unitId}/weeks/new`}
                             className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"

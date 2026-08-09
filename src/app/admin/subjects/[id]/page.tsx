@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/server';
 import DeleteRowButton from '@/components/DeleteRowButton';
 import CurriculumPlanner from '@/components/CurriculumPlanner';
 import ExportSyllabus from '@/components/ExportSyllabus';
+import SuggestNextWeek from '@/components/SuggestNextWeek';
 import { subjectEmoji } from '@/utils/subjectEmoji';
 
 type Subject = {
@@ -12,7 +13,21 @@ type Subject = {
     name: string;
     description: string | null;
     color: string | null;
+    course_mode: string | null;
+    tech_stack: string | null;
+    technical_document: string | null;
+    accent_color: string | null;
     semesters: { name: string } | null;
+};
+
+type WeekMaterial = { id: string; is_published: boolean; source: string | null; description: string | null };
+
+type UnitWeek = {
+    id: string;
+    number: number;
+    title: string | null;
+    description: string | null;
+    materials: WeekMaterial[];
 };
 
 type Unit = {
@@ -20,12 +35,7 @@ type Unit = {
     name: string;
     description: string | null;
     order: number;
-    weeks: {
-        id: string;
-        number: number;
-        title: string | null;
-        materials: { id: string; is_published: boolean }[];
-    }[];
+    weeks: UnitWeek[];
 };
 
 export default async function SubjectPage({
@@ -41,7 +51,7 @@ export default async function SubjectPage({
             supabase.from('subjects').select('*, semesters(name)').eq('id', id).single(),
             supabase
                 .from('units')
-                .select('id, name, description, order, weeks(id, number, title, materials(id, is_published))')
+                .select('id, name, description, order, weeks(id, number, title, description, materials(id, is_published, source, description))')
                 .eq('subject_id', id)
                 .order('order', { ascending: true }),
         ]);
@@ -52,6 +62,75 @@ export default async function SubjectPage({
     const typedUnits = (units ?? []) as Unit[];
     const accent = s.color ?? '#1e40af';
     const emoji = subjectEmoji(s.name);
+
+    // "Sugerir próxima semana" recorre TODA la materia por orden de unidad (mismo criterio que
+    // "clase anterior"/"próxima clase" cruzando unidades) — no solo la unidad que se esté
+    // mirando, porque la unidad que estás viendo puede no ser la que realmente sigue en el curso.
+    function exerciseTitleFor(week: UnitWeek): string | null {
+        for (const m of week.materials ?? []) {
+            if (m.source !== 'ai' || !m.description) continue;
+            try {
+                const parsed = JSON.parse(m.description) as { ejercicioClase?: { titulo?: string } };
+                if (parsed.ejercicioClase?.titulo) return parsed.ejercicioClase.titulo;
+            } catch {
+                continue;
+            }
+        }
+        return null;
+    }
+
+    const allWeeksOrdered = typedUnits.flatMap((u) =>
+        [...u.weeks].sort((a, b) => a.number - b.number).map((w) => ({ ...w, unitId: u.id, unitName: u.name }))
+    );
+
+    let lastContentIndex = -1;
+    allWeeksOrdered.forEach((w, i) => { if ((w.materials?.length ?? 0) > 0) lastContentIndex = i; });
+    const existingTarget = lastContentIndex + 1 < allWeeksOrdered.length ? allWeeksOrdered[lastContentIndex + 1] : null;
+
+    let suggestTargetWeekId: string | null = null;
+    let suggestTargetWeekNumber = 1;
+    let suggestTargetUnitId: string | null = typedUnits[0]?.id ?? null;
+    let suggestTargetUnitName = typedUnits[0]?.name ?? '';
+
+    if (existingTarget) {
+        // Ya existe una semana vacía después de la última con contenido — completarla.
+        suggestTargetWeekId = existingTarget.id;
+        suggestTargetWeekNumber = existingTarget.number;
+        suggestTargetUnitId = existingTarget.unitId;
+        suggestTargetUnitName = existingTarget.unitName;
+    } else if (allWeeksOrdered.length > 0) {
+        // No hay ninguna semana vacía ya creada — hay que crear una. Si la unidad siguiente (por
+        // order) a la del último contenido existe y está totalmente vacía, arranca ahí en la
+        // semana 1; si no, sigue en la misma unidad del último contenido.
+        const lastWeek = allWeeksOrdered[allWeeksOrdered.length - 1];
+        const lastUnitIndex = typedUnits.findIndex((u) => u.id === lastWeek.unitId);
+        const nextUnit = lastUnitIndex >= 0 ? typedUnits[lastUnitIndex + 1] : undefined;
+
+        if (nextUnit && (nextUnit.weeks?.length ?? 0) === 0) {
+            suggestTargetUnitId = nextUnit.id;
+            suggestTargetUnitName = nextUnit.name;
+            suggestTargetWeekNumber = 1;
+        } else {
+            const targetUnit = typedUnits[lastUnitIndex] ?? typedUnits[0];
+            const weeksInTargetUnit = targetUnit.weeks ?? [];
+            suggestTargetUnitId = targetUnit.id;
+            suggestTargetUnitName = targetUnit.name;
+            suggestTargetWeekNumber = weeksInTargetUnit.length > 0
+                ? Math.max(...weeksInTargetUnit.map((w) => w.number)) + 1
+                : 1;
+        }
+    }
+    // Si no hay ninguna semana en toda la materia todavía, se queda en la primera unidad, semana 1
+    // (los valores por defecto de arriba ya cubren ese caso).
+
+    // Últimas hasta 4 semanas ANTES del objetivo, en el orden real del curso (no todo el
+    // historial, para no hacer crecer el prompt sin control en materias largas).
+    const targetGlobalIndex = existingTarget
+        ? allWeeksOrdered.findIndex((w) => w.id === existingTarget.id)
+        : allWeeksOrdered.length;
+    const suggestRecentWeeks = allWeeksOrdered
+        .slice(Math.max(0, targetGlobalIndex - 4), targetGlobalIndex)
+        .map((w) => ({ title: w.title, description: w.description, exerciseTitle: exerciseTitleFor(w) }));
 
     const totalWeeks = typedUnits.reduce((acc, u) => acc + (u.weeks?.length ?? 0), 0);
     const totalMaterials = typedUnits.reduce(
@@ -108,6 +187,22 @@ export default async function SubjectPage({
                     {/* Actions */}
                     <div className="flex items-center gap-2 flex-wrap shrink-0">
                         <CurriculumPlanner subjectId={s.id} subjectName={s.name} />
+                        {typedUnits.length > 0 && suggestTargetUnitId && (
+                            <SuggestNextWeek
+                                subjectId={s.id}
+                                unitId={suggestTargetUnitId}
+                                targetWeekId={suggestTargetWeekId}
+                                targetWeekNumber={suggestTargetWeekNumber}
+                                targetUnitName={suggestTargetUnitName}
+                                subjectName={s.name}
+                                subjectDescription={s.description}
+                                courseMode={s.course_mode}
+                                techStack={s.tech_stack}
+                                technicalDocument={s.technical_document}
+                                recentWeeks={suggestRecentWeeks}
+                                accent={accent}
+                            />
+                        )}
                         <ExportSyllabus subjectId={s.id} subjectName={s.name} />
                         <Link
                             href={`/admin/subjects/${id}/edit`}
