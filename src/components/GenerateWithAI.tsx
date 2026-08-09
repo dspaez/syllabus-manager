@@ -44,6 +44,7 @@ interface Props {
     weekId: string;
     subjectId: string;
     unitId: string;
+    weekTopic: string;
     techStack?: string | null;
     courseMode?: string | null;
     /** 'project': technical_document_snapshot más reciente hasta esta semana (no necesariamente
@@ -159,10 +160,10 @@ function ResultView({ type, result }: { type: GenerateType; result: GenerateResu
     return <GuideView data={result as GuideResult} />;
 }
 
-export default function GenerateWithAI({ weekId, techStack, courseMode, exerciseProjectContext, exercisePreviousTitles }: Props) {
+export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMode, exerciseProjectContext, exercisePreviousTitles }: Props) {
     const [open, setOpen] = useState(false);
     const [type, setType] = useState<GenerateType>('slides');
-    const [topic, setTopic] = useState('');
+    const [topic, setTopic] = useState(weekTopic);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<GenerateResult | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -171,6 +172,7 @@ export default function GenerateWithAI({ weekId, techStack, courseMode, exercise
 
     function handleOpen() {
         setOpen(true);
+        setTopic(weekTopic);
         setResult(null);
         setError(null);
         setSaved(false);
@@ -178,7 +180,6 @@ export default function GenerateWithAI({ weekId, techStack, courseMode, exercise
 
     function handleClose() {
         setOpen(false);
-        setTopic('');
         setResult(null);
         setError(null);
         setSaved(false);

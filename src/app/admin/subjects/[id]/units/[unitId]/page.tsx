@@ -402,6 +402,7 @@ export default async function UnitPage({
                                             weekId={week.id}
                                             subjectId={id}
                                             unitId={unitId}
+                                            weekTopic={[week.title ?? `Semana ${week.number}`, week.description].filter(Boolean).join(' — ')}
                                             techStack={s?.tech_stack ?? null}
                                             courseMode={s?.course_mode ?? null}
                                             exerciseProjectContext={exerciseProjectContextFor(week)}
