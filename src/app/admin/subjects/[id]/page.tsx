@@ -105,19 +105,20 @@ export default async function SubjectPage({
         const lastWeek = allWeeksOrdered[allWeeksOrdered.length - 1];
         const lastUnitIndex = typedUnits.findIndex((u) => u.id === lastWeek.unitId);
         const nextUnit = lastUnitIndex >= 0 ? typedUnits[lastUnitIndex + 1] : undefined;
+        // Numeración global del curso, no por unidad — independientemente de cómo se haya creado
+        // cada semana (curriculum, a mano, o esta misma herramienta), la próxima siempre sigue el
+        // número más alto de TODA la materia, nunca reinicia en 1 al entrar a una unidad nueva.
+        const globalNextNumber = Math.max(...allWeeksOrdered.map((w) => w.number)) + 1;
 
         if (nextUnit && (nextUnit.weeks?.length ?? 0) === 0) {
             suggestTargetUnitId = nextUnit.id;
             suggestTargetUnitName = nextUnit.name;
-            suggestTargetWeekNumber = 1;
+            suggestTargetWeekNumber = globalNextNumber;
         } else {
             const targetUnit = typedUnits[lastUnitIndex] ?? typedUnits[0];
-            const weeksInTargetUnit = targetUnit.weeks ?? [];
             suggestTargetUnitId = targetUnit.id;
             suggestTargetUnitName = targetUnit.name;
-            suggestTargetWeekNumber = weeksInTargetUnit.length > 0
-                ? Math.max(...weeksInTargetUnit.map((w) => w.number)) + 1
-                : 1;
+            suggestTargetWeekNumber = globalNextNumber;
         }
     }
     // Si no hay ninguna semana en toda la materia todavía, se queda en la primera unidad, semana 1
