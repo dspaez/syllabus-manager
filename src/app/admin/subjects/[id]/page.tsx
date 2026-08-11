@@ -99,27 +99,21 @@ export default async function SubjectPage({
         suggestTargetUnitId = existingTarget.unitId;
         suggestTargetUnitName = existingTarget.unitName;
     } else if (allWeeksOrdered.length > 0) {
-        // No hay ninguna semana vacía ya creada — hay que crear una. Si la unidad siguiente (por
-        // order) a la del último contenido existe y está totalmente vacía, arranca ahí en la
-        // semana 1; si no, sigue en la misma unidad del último contenido.
+        // No hay ninguna semana vacía ya creada — hay que crear una, SIEMPRE en la misma unidad
+        // del último contenido. El sistema no tiene forma de saber cuántas semanas le "tocan" a
+        // cada unidad, así que nunca asume que hay que cruzar a la siguiente solo porque existe
+        // y está vacía — todas las unidades arrancan vacías hasta que alguien les pone la primera
+        // semana. Pasar de unidad es una decisión explícita del docente: creando a mano la primera
+        // semana de la unidad siguiente cuando decida que la actual ya está completa (con "+ Nueva
+        // semana" desde esa unidad) — a partir de ahí, esta herramienta continúa desde esa semana.
         const lastWeek = allWeeksOrdered[allWeeksOrdered.length - 1];
-        const lastUnitIndex = typedUnits.findIndex((u) => u.id === lastWeek.unitId);
-        const nextUnit = lastUnitIndex >= 0 ? typedUnits[lastUnitIndex + 1] : undefined;
+        const targetUnit = typedUnits.find((u) => u.id === lastWeek.unitId) ?? typedUnits[0];
         // Numeración global del curso, no por unidad — independientemente de cómo se haya creado
         // cada semana (curriculum, a mano, o esta misma herramienta), la próxima siempre sigue el
-        // número más alto de TODA la materia, nunca reinicia en 1 al entrar a una unidad nueva.
-        const globalNextNumber = Math.max(...allWeeksOrdered.map((w) => w.number)) + 1;
-
-        if (nextUnit && (nextUnit.weeks?.length ?? 0) === 0) {
-            suggestTargetUnitId = nextUnit.id;
-            suggestTargetUnitName = nextUnit.name;
-            suggestTargetWeekNumber = globalNextNumber;
-        } else {
-            const targetUnit = typedUnits[lastUnitIndex] ?? typedUnits[0];
-            suggestTargetUnitId = targetUnit.id;
-            suggestTargetUnitName = targetUnit.name;
-            suggestTargetWeekNumber = globalNextNumber;
-        }
+        // número más alto de TODA la materia.
+        suggestTargetUnitId = targetUnit.id;
+        suggestTargetUnitName = targetUnit.name;
+        suggestTargetWeekNumber = Math.max(...allWeeksOrdered.map((w) => w.number)) + 1;
     }
     // Si no hay ninguna semana en toda la materia todavía, se queda en la primera unidad, semana 1
     // (los valores por defecto de arriba ya cubren ese caso).
