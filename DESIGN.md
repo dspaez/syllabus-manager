@@ -236,6 +236,9 @@ Sin bordes duros ni esquinas cuadradas en ningún componente observado — la su
 ### Subject Emoji (signature component)
 Cada materia se identifica con un emoji elegido por palabra clave en su nombre (`subjectEmoji()`: ☕ Java, 🐍 Python, 💻 Web, 🗄️ Datos, 🌐 Redes, 📐 Matemática, ⚛️ Física, 🎨 Diseño, 🔒 Seguridad, 🤖 IA, ⚙️ Algoritmos, 🖥️ Sistemas, 📋 Proyectos, 📡 Comunicación, 📖 genérico). Es el sistema de iconografía real del producto — no hay un set de íconos SVG custom por materia, y no debe agregarse uno; el emoji es la decisión de personalidad "cálido pero eficiente" hecha componente.
 
+### Subject Accent Dot (signature component)
+Punto de acento: `h-2 w-2 shrink-0 rounded-full` (8px), fondo con el color de acento de la materia/unidad (`accentColor`/`subject.color`), ubicado junto al título en headers de materia/unidad y junto a rótulos de sección (p. ej. "Resumen" en la vista de material, cada ítem del acordeón de políticas). Reemplaza al patrón anterior de borde izquierdo de 4px (`borderLeft: 4px solid ${accentColor}`) sobre el contenedor completo: el acento ahora vive como un punto discreto pegado al texto, no como una franja de borde en toda la tarjeta.
+
 ## Do's and Don'ts
 
 ### Do:
