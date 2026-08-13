@@ -143,7 +143,6 @@ export default async function PublicSubjectPage({
       {/* Subject strip header — full width */}
       <header
         className="rounded-2xl border border-slate-200 bg-white overflow-hidden dark:border-slate-800 dark:bg-slate-900"
-        style={{ borderLeft: `4px solid ${accentColor}` }}
       >
         <div className="flex items-center gap-4 px-6 py-5">
           <span
@@ -159,9 +158,12 @@ export default async function PublicSubjectPage({
             >
               Semestre activo · {unitList.length} {unitList.length === 1 ? 'unidad' : 'unidades'}
             </p>
-            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-              {s.name}
-            </h1>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: accentColor }} />
+              <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                {s.name}
+              </h1>
+            </div>
             {s.description && (
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                 {s.description}

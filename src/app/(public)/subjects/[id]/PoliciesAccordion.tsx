@@ -99,10 +99,10 @@ export default function PoliciesAccordion({ settings, accentColor }: { settings:
                             <div
                                 key={s.key}
                                 className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-800/70"
-                                style={{ borderLeft: `3px solid ${borderColor}` }}
                             >
-                                <div className="flex items-center gap-2 mb-2" style={{ color: borderColor }}>
-                                    {meta?.icon}
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: borderColor }} />
+                                    <span style={{ color: borderColor }}>{meta?.icon}</span>
                                     <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                                         {meta?.label ?? s.key}
                                     </p>

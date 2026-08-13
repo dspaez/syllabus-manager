@@ -283,7 +283,6 @@ export default async function UnitPage({
             {/* ── Header ── */}
             <div
                 className="rounded-2xl border border-slate-200 bg-white overflow-hidden dark:border-slate-800 dark:bg-slate-900"
-                style={{ borderLeft: `4px solid ${accent}` }}
             >
                 <div className="flex flex-wrap items-start justify-between gap-4 px-6 py-5">
                     <div className="min-w-0">
@@ -297,9 +296,12 @@ export default async function UnitPage({
                             <span>/</span>
                             <span className="text-slate-600 dark:text-slate-300 truncate">{u.name}</span>
                         </div>
-                        <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                            {u.name}
-                        </h1>
+                        <div className="flex items-center gap-2">
+                            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: accent }} />
+                            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                                {u.name}
+                            </h1>
+                        </div>
                         {u.description && (
                             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-xl">{u.description}</p>
                         )}

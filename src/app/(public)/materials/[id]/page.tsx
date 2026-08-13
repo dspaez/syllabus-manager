@@ -263,10 +263,12 @@ function GuideView({ data, accentColor }: { data: GuideContent; accentColor: str
 
             {/* Summary — bookmark card */}
             <section>
-                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Resumen</h2>
+                <h2 className="flex items-center gap-2 text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: accentColor }} />
+                    Resumen
+                </h2>
                 <div
                     className="rounded-2xl border border-gray-100 bg-white shadow-sm px-6 py-5 overflow-hidden"
-                    style={{ borderLeft: `4px solid ${accentColor}` }}
                 >
                     <div className="flex items-start gap-3">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"

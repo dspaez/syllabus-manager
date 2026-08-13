@@ -234,7 +234,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     <div className="hidden lg:flex items-center gap-2">
                         <Link
                             href="/admin/subjects/new"
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-700 to-violet-700 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-blue-200 dark:shadow-blue-950/40 hover:shadow-lg transition-shadow"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-700 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-blue-200 dark:shadow-blue-950/40 hover:shadow-lg transition-shadow"
                         >
                             + Asignatura
                         </Link>

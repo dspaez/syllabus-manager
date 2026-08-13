@@ -54,7 +54,7 @@ export default async function SemestersPage() {
                 </div>
                 <Link
                     href="/admin/semesters/new"
-                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-700 to-violet-700 text-white text-sm font-semibold px-5 py-3 shadow-lg shadow-blue-200/60 hover:shadow-xl transition-shadow"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-blue-700 text-white text-sm font-semibold px-5 py-3 shadow-lg shadow-blue-200/60 hover:shadow-xl transition-shadow"
                 >
                     <span className="text-base leading-none">＋</span>
                     Nuevo semestre

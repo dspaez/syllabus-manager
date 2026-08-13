@@ -142,7 +142,6 @@ export default async function SubjectPage({
             {/* ── Subject header ── */}
             <div
                 className="rounded-2xl border border-slate-200 bg-white overflow-hidden dark:border-slate-800 dark:bg-slate-900"
-                style={{ borderLeft: `4px solid ${accent}` }}
             >
                 <div className="flex flex-wrap items-start justify-between gap-4 px-6 py-5">
                     <div className="min-w-0 flex items-start gap-4">
@@ -160,9 +159,12 @@ export default async function SubjectPage({
                                 <span className="text-slate-300 dark:text-slate-700">/</span>
                                 <span className="text-xs text-slate-600 dark:text-slate-300 truncate">{s.name}</span>
                             </div>
-                            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                                {s.name}
-                            </h1>
+                            <div className="flex items-center gap-2">
+                                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: accent }} />
+                                <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                                    {s.name}
+                                </h1>
+                            </div>
                             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                 {s.semesters?.name && (
                                     <span

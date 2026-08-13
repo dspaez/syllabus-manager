@@ -109,7 +109,7 @@ export default async function SubjectsPage({
                 </div>
                 <Link
                     href="/admin/subjects/new"
-                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-700 to-violet-700 text-white text-sm font-semibold px-5 py-3 shadow-lg shadow-blue-200/60 hover:opacity-90 transition-opacity"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-blue-700 text-white text-sm font-semibold px-5 py-3 shadow-lg shadow-blue-200/60 hover:opacity-90 transition-opacity"
                 >
                     <span className="text-base leading-none">＋</span>
                     Nueva asignatura
