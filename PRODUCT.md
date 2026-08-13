@@ -32,7 +32,7 @@ The AI generation is grounded in the instructor's actual course structure (subje
 - Subjects carry a `course_mode` (e.g. project-based vs. traditional) and optional `tech_stack`; AI prompts must respect these — e.g. a project-mode subject with a declared stack should get code/examples in that stack, not an assumed default.
 - Structured AI outputs are validated with zod, but some fields (e.g. icon names) are enforced by prompt + renderer fallback rather than hard schema constraints, because the Anthropic SDK degrades certain zod constructs (enum/literal) to descriptive text rather than enforced schema — noted directly in `src/lib/classKit/schema.ts`.
 - UI copy and AI-generated content observed in Spanish throughout the current codebase; not confirmed as a hard product requirement, but treat as the existing convention unless told otherwise.
-- No confirmed institution name, product name for external users, or brand identity yet — this is presently an internal/personal tool.
+- No confirmed institution name, product name for external users, or brand identity yet — this is presently an internal/personal tool. The public site header (`src/app/(public)/PublicShell.tsx`) currently shows "AulaVirtual" and a dark blue mark (`#0f2a5e`) — **this is a known, intentional generic placeholder, not an unresolved pending decision.** It exists so the public-facing UI has *some* name and mark instead of shipping unbranded, and is expected to be swapped once (if) a real institution name/brand is confirmed. Do not treat it as a bug to fix or a TODO to chase; do not invent product-copy or design work assuming "AulaVirtual" is the real, final name.
 
 ## Product Principles
 
