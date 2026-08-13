@@ -3,12 +3,7 @@
 import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 
-type GenerateType = 'slides' | 'exercises' | 'guide';
-
-interface Slide {
-    title: string;
-    points: string[];
-}
+type GenerateType = 'exercises' | 'guide';
 
 interface Exercise {
     titulo: string;
@@ -20,10 +15,6 @@ interface Exercise {
 interface Concept {
     name: string;
     explanation: string;
-}
-
-interface SlidesResult {
-    slides: Slide[];
 }
 
 interface ExercisesResult {
@@ -38,7 +29,7 @@ interface GuideResult {
     summary: string;
 }
 
-type GenerateResult = SlidesResult | ExercisesResult | GuideResult;
+type GenerateResult = ExercisesResult | GuideResult;
 
 interface Props {
     weekId: string;
@@ -55,29 +46,9 @@ interface Props {
 }
 
 const TYPE_LABELS: Record<GenerateType, string> = {
-    slides: 'Estructura de diapositivas',
     exercises: 'Ejercicios prácticos',
     guide: 'Guía de estudio',
 };
-
-function SlidesView({ data }: { data: SlidesResult }) {
-    return (
-        <div className="space-y-3">
-            {data.slides.map((slide, i) => (
-                <div key={i} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <p className="font-semibold text-gray-800">
-                        {i + 1}. {slide.title}
-                    </p>
-                    <ul className="mt-1 list-disc pl-5 space-y-0.5">
-                        {slide.points.map((point, j) => (
-                            <li key={j} className="text-sm text-gray-600">{point}</li>
-                        ))}
-                    </ul>
-                </div>
-            ))}
-        </div>
-    );
-}
 
 function ExerciseCard({ ex, label }: { ex: Exercise; label: string }) {
     return (
@@ -155,14 +126,13 @@ function GuideView({ data }: { data: GuideResult }) {
 }
 
 function ResultView({ type, result }: { type: GenerateType; result: GenerateResult }) {
-    if (type === 'slides') return <SlidesView data={result as SlidesResult} />;
     if (type === 'exercises') return <ExercisesView data={result as ExercisesResult} />;
     return <GuideView data={result as GuideResult} />;
 }
 
 export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMode, exerciseProjectContext, exercisePreviousTitles }: Props) {
     const [open, setOpen] = useState(false);
-    const [type, setType] = useState<GenerateType>('slides');
+    const [type, setType] = useState<GenerateType>('exercises');
     const [topic, setTopic] = useState(weekTopic);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<GenerateResult | null>(null);
@@ -230,16 +200,13 @@ export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMod
             const supabase = createClient();
             
             // Generate concise name with prefix
-            const prefix = type === 'slides' ? 'Diapositivas' : type === 'exercises' ? 'Ejercicios' : 'Guía';
+            const prefix = type === 'exercises' ? 'Ejercicios' : 'Guía';
             const truncatedTopic = topic.trim().substring(0, 50);
             const materialName = `${prefix}: ${truncatedTopic}`;
-            
-            // Determine type based on content type
-            const materialType = type === 'slides' ? 'pptx' : 'doc';
-            
+
             const { error: dbError } = await supabase.from('materials').insert({
                 name: materialName,
-                type: materialType,
+                type: 'doc',
                 description: JSON.stringify(result),
                 is_published: false,
                 week_id: weekId,
@@ -264,7 +231,7 @@ export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMod
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-4">
                     <path d="M15.98 1.804a1 1 0 0 0-1.96 0l-.24 1.192a1 1 0 0 1-.784.785l-1.192.238a1 1 0 0 0 0 1.962l1.192.238a1 1 0 0 1 .785.785l.238 1.192a1 1 0 0 0 1.962 0l.238-1.192a1 1 0 0 1 .785-.785l1.192-.238a1 1 0 0 0 0-1.962l-1.192-.238a1 1 0 0 1-.785-.785l-.238-1.192ZM6.949 5.684a1 1 0 0 0-1.898 0l-.683 2.051a1 1 0 0 1-.633.633l-2.051.683a1 1 0 0 0 0 1.898l2.051.684a1 1 0 0 1 .633.632l.683 2.051a1 1 0 0 0 1.898 0l.683-2.051a1 1 0 0 1 .633-.633l2.051-.683a1 1 0 0 0 0-1.898l-2.051-.683a1 1 0 0 1-.633-.633L6.95 5.684ZM13.949 13.684a1 1 0 0 0-1.898 0l-.184.551a1 1 0 0 1-.632.633l-.551.183a1 1 0 0 0 0 1.898l.551.184a1 1 0 0 1 .633.632l.183.551a1 1 0 0 0 1.898 0l.184-.551a1 1 0 0 1 .632-.632l.551-.184a1 1 0 0 0 0-1.898l-.551-.183a1 1 0 0 1-.633-.633l-.183-.551Z" />
                 </svg>
-                Generar con IA
+                Material para estudiantes
             </button>
 
             {open && (
@@ -272,7 +239,7 @@ export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMod
                     <div className="flex w-full max-w-2xl flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto transition-[opacity,transform] duration-200 ease-snappy starting:opacity-0 starting:scale-95 motion-reduce:starting:scale-100">
                         {/* Header */}
                         <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-gray-900">Generar contenido con IA</h2>
+                            <h2 className="text-lg font-semibold text-gray-900">Generar material para estudiantes</h2>
                             <button
                                 onClick={handleClose}
                                 className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
