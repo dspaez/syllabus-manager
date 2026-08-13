@@ -1,6 +1,6 @@
 # 003 — Bridge the week-collapse content teleport in SubjectContent.tsx (the real, live component)
 
-- **Status**: TODO
+- **Status**: DONE (commit `5dca295`)
 - **Commit**: 2b9f1fc
 - **Severity**: MEDIUM
 - **Category**: Missed opportunities / Interruptibility

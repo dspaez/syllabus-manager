@@ -5,14 +5,14 @@ Plans written by `improve-animations`. Each is self-contained; see the individua
 | # | Title | Severity | Status |
 |---|-------|----------|--------|
 | 001 | [Animate the entrance of the 5 AI-generation modals](001-ai-modal-entrance.md) | MEDIUM | DONE (commit `f157103`) |
-| 002 | [Bridge the accordion/collapse content teleport in WeeksAccordion and CurriculumPlanner](002-accordion-height-transition.md) | MEDIUM | PARTIALLY MOOT — Target 1 superseded by 003, Target 2 (`CurriculumPlanner.tsx`) verified working, pending merge |
-| 003 | [Bridge the week-collapse content teleport in SubjectContent.tsx (the real, live component)](003-subject-content-week-collapse.md) | MEDIUM | TODO |
+| 002 | [Bridge the accordion/collapse content teleport in WeeksAccordion and CurriculumPlanner](002-accordion-height-transition.md) | MEDIUM | PARTIALLY MOOT — Target 1 superseded by 003 (DONE); Target 2 (`CurriculumPlanner.tsx`) DONE (commit `cbd535b`) |
+| 003 | [Bridge the week-collapse content teleport in SubjectContent.tsx (the real, live component)](003-subject-content-week-collapse.md) | MEDIUM | DONE (commit `5dca295`) |
 
 ## Execution order
 
-- Plan 001: done and merged.
-- Plan 002: only its `CurriculumPlanner.tsx` half is real. That half was executed and browser-verified in worktree `agent-a0b6b07c811d6f388` and is ready to merge as-is (cherry-pick just that file's diff, not `WeeksAccordion.tsx`'s — that file no longer exists).
-- Plan 003: not yet executed. Independent of 002 — different file (`SubjectContent.tsx`), no shared state or token.
+- Plan 001: done and merged (`f157103`).
+- Plan 002: only its `CurriculumPlanner.tsx` half was real; merged (`cbd535b`). `WeeksAccordion.tsx` no longer exists.
+- Plan 003: done and merged (`5dca295`), browser-verified live (expand/collapse, dark mode).
 
 ## Notes
 
