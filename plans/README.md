@@ -4,13 +4,21 @@ Plans written by `improve-animations`. Each is self-contained; see the individua
 
 | # | Title | Severity | Status |
 |---|-------|----------|--------|
-| 001 | [Animate the entrance of the 5 AI-generation modals](001-ai-modal-entrance.md) | MEDIUM | TODO |
+| 001 | [Animate the entrance of the 5 AI-generation modals](001-ai-modal-entrance.md) | MEDIUM | DONE (commit `f157103`) |
+| 002 | [Bridge the accordion/collapse content teleport in WeeksAccordion and CurriculumPlanner](002-accordion-height-transition.md) | MEDIUM | PARTIALLY MOOT — Target 1 superseded by 003, Target 2 (`CurriculumPlanner.tsx`) verified working, pending merge |
+| 003 | [Bridge the week-collapse content teleport in SubjectContent.tsx (the real, live component)](003-subject-content-week-collapse.md) | MEDIUM | TODO |
 
 ## Execution order
 
-Just one plan so far — no ordering dependencies. Plan 001 touches `src/app/globals.css` (adds one `--ease-snappy` token to the existing `@theme inline` block) plus 5 independent components (`GenerateWithAI.tsx`, `GenerateClassKit.tsx`, `GenerateTechnicalDoc.tsx`, `SuggestNextWeek.tsx`, `CurriculumPlanner.tsx`) — the 5 component edits can be done in any order or in parallel; the globals.css token should land first (or simultaneously) since all 5 reference `ease-snappy`.
+- Plan 001: done and merged.
+- Plan 002: only its `CurriculumPlanner.tsx` half is real. That half was executed and browser-verified in worktree `agent-a0b6b07c811d6f388` and is ready to merge as-is (cherry-pick just that file's diff, not `WeeksAccordion.tsx`'s — that file no longer exists).
+- Plan 003: not yet executed. Independent of 002 — different file (`SubjectContent.tsx`), no shared state or token.
 
 ## Notes
 
-- This app has no motion library and, before plan 001, no custom easing/duration tokens — `--ease-snappy` is the first such token and is intended to be reused by future plans rather than each one inventing its own cubic-bezier.
-- Source sweep this plan came from: a `find-animation-opportunities` pass across the whole app (see conversation history) identified 6 opportunities total; only opportunity #1 (the 5 modal entrances) has been turned into a plan so far. The other 5 (WeeksAccordion height transition, inline save/error feedback fade, form submit press feedback, ThemeToggle icon crossfade, CurriculumPlanner's nested unit-collapse) are not yet planned — ask for `improve-animations plan <description>` on any of them when ready.
+- This app has no motion library and, before plan 001, no custom easing/duration tokens — `--ease-snappy` is the first such token and is intended to be reused by future plans rather than each one inventing its own cubic-bezier. Plans 002 and 003 do *not* use `ease-snappy`: both deliberately copy `PoliciesAccordion.tsx`'s existing (bare, default-eased) `transition-all` pattern instead, per that pattern's own reasoning.
+- **Lesson learned, now standard practice**: `find-animation-opportunities` finds a pattern in a file; it does not check whether that file is ever imported. Plan 002's Target 1 was correctly identified and correctly fixed, but in a component (`WeeksAccordion.tsx`) that turned out to be orphaned dead code from an earlier, superseded redesign. This was only caught by an actual browser feel-check after execution — grep for the component's usage (not just its existence) before or during planning next time a plan targets a file that "sounds like" the thing rendering some UI, especially in a codebase with more than one component of a similar name/shape (`WeeksAccordion.tsx` vs. `SubjectContent.tsx`'s `WeekCollapsible`, both accordion-shaped, only one wired in).
+- Source sweep plans 001 and 002 came from: a `find-animation-opportunities` pass across the whole app (see conversation history) identified 6 opportunities total.
+  - #1 → plan 001. DONE.
+  - #2 (weeks height transition) + #6 (CurriculumPlanner nested unit-collapse) → merged into plan 002. #2 corrected and re-targeted as plan 003 after the dead-code discovery; #6 (in plan 002) stands.
+  - #3 (inline save/error feedback fade), #4 (form submit press feedback), #5 (ThemeToggle icon crossfade) are not yet planned — ask for `improve-animations plan <description>` on any of them when ready.
