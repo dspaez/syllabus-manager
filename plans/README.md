@@ -8,6 +8,7 @@ Plans written by `improve-animations`. Each is self-contained; see the individua
 | 002 | [Bridge the accordion/collapse content teleport in WeeksAccordion and CurriculumPlanner](002-accordion-height-transition.md) | MEDIUM | PARTIALLY MOOT — Target 1 superseded by 003 (DONE); Target 2 (`CurriculumPlanner.tsx`) DONE (commit `cbd535b`) |
 | 003 | [Bridge the week-collapse content teleport in SubjectContent.tsx (the real, live component)](003-subject-content-week-collapse.md) | MEDIUM | DONE (commit `5dca295`) |
 | 004 | [Fade in inline save/error feedback; add press feedback to form submit buttons](004-feedback-fade-and-press-states.md) | LOW-MEDIUM | DONE (commit `fc7f6eb`) |
+| 005 | [Cross-fade the ThemeToggle moon/sun icon instead of hard-swapping it](005-theme-toggle-crossfade.md) | LOW | TODO |
 
 ## Execution order
 
@@ -15,6 +16,7 @@ Plans written by `improve-animations`. Each is self-contained; see the individua
 - Plan 002: only its `CurriculumPlanner.tsx` half was real; merged (`cbd535b`). `WeeksAccordion.tsx` no longer exists.
 - Plan 003: done and merged (`5dca295`), browser-verified live (expand/collapse, dark mode).
 - Plan 004: done and merged (`fc7f6eb`). Reused the `--ease-snappy` token from plan 001 across all 27 edit sites.
+- Plan 005: not yet executed. Independent of 001-004 (touches only `ThemeToggle.tsx`, untouched by any prior plan). Reuses `--ease-snappy`. When executing, provision the worktree from current `main` and verify its HEAD before dispatching — see the stale-worktree lesson below.
 
 ## Notes
 
@@ -25,4 +27,4 @@ Plans written by `improve-animations`. Each is self-contained; see the individua
   - #1 → plan 001. DONE.
   - #2 (weeks height transition) + #6 (CurriculumPlanner nested unit-collapse) → merged into plan 002. #2 corrected and re-targeted as plan 003 after the dead-code discovery; #6 (in plan 002) stands.
   - #3 (inline save/error feedback fade) + #4 (form submit press feedback) → merged into plan 004, since both reuse `--ease-snappy` and touch a heavily-overlapping file set (10 of 16 files appear in both parts).
-  - #5 (ThemeToggle icon crossfade) is not yet planned — ask for `improve-animations plan <description>` when ready.
+  - #5 (ThemeToggle icon crossfade) → plan 005. All 6 original opportunities are now planned.
