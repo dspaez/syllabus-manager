@@ -1,6 +1,6 @@
 # 005 — Cross-fade the ThemeToggle moon/sun icon instead of hard-swapping it
 
-- **Status**: TODO
+- **Status**: DONE (commit `03a75d3`)
 - **Commit**: 9a29158
 - **Severity**: LOW (polish — state indication on a rare, non-critical toggle)
 - **Category**: Missed opportunities / State indication

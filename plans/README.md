@@ -8,15 +8,11 @@ Plans written by `improve-animations`. Each is self-contained; see the individua
 | 002 | [Bridge the accordion/collapse content teleport in WeeksAccordion and CurriculumPlanner](002-accordion-height-transition.md) | MEDIUM | PARTIALLY MOOT — Target 1 superseded by 003 (DONE); Target 2 (`CurriculumPlanner.tsx`) DONE (commit `cbd535b`) |
 | 003 | [Bridge the week-collapse content teleport in SubjectContent.tsx (the real, live component)](003-subject-content-week-collapse.md) | MEDIUM | DONE (commit `5dca295`) |
 | 004 | [Fade in inline save/error feedback; add press feedback to form submit buttons](004-feedback-fade-and-press-states.md) | LOW-MEDIUM | DONE (commit `fc7f6eb`) |
-| 005 | [Cross-fade the ThemeToggle moon/sun icon instead of hard-swapping it](005-theme-toggle-crossfade.md) | LOW | TODO |
+| 005 | [Cross-fade the ThemeToggle moon/sun icon instead of hard-swapping it](005-theme-toggle-crossfade.md) | LOW | DONE (commit `03a75d3`) |
 
 ## Execution order
 
-- Plan 001: done and merged (`f157103`).
-- Plan 002: only its `CurriculumPlanner.tsx` half was real; merged (`cbd535b`). `WeeksAccordion.tsx` no longer exists.
-- Plan 003: done and merged (`5dca295`), browser-verified live (expand/collapse, dark mode).
-- Plan 004: done and merged (`fc7f6eb`). Reused the `--ease-snappy` token from plan 001 across all 27 edit sites.
-- Plan 005: not yet executed. Independent of 001-004 (touches only `ThemeToggle.tsx`, untouched by any prior plan). Reuses `--ease-snappy`. When executing, provision the worktree from current `main` and verify its HEAD before dispatching — see the stale-worktree lesson below.
+All 5 plans done and merged: `f157103`, `cbd535b`, `5dca295`, `fc7f6eb`, `03a75d3`. `WeeksAccordion.tsx` no longer exists (superseded by plan 003). Every one of the 6 original `find-animation-opportunities` findings has shipped.
 
 ## Notes
 
