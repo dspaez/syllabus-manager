@@ -124,6 +124,70 @@ export type AnalogiaSlide = z.infer<typeof AnalogiaSlideSchema>;
 export type MapeoIconosSlide = z.infer<typeof MapeoIconosSlideSchema>;
 export type ProblemaAlertasSlide = z.infer<typeof ProblemaAlertasSlideSchema>;
 
+// ── Layouts "extra" (tabla, pasos) ──────────────────────────────────────────
+// NO viven en SlideSchema/SlidesOnlySchema: sumar un 8vo layout a ese discriminated
+// union (probado con varios diseños, incluso mínimos) hace que el compilador de
+// structured outputs de Claude rechace la llamada con "The compiled grammar is too
+// large" — el union de 7 layouts ya está en el límite, verificado con llamadas reales
+// en un servidor limpio (7 funciona siempre, 7+cualquier variante nueva falla siempre).
+// Se generan en una SEGUNDA llamada aparte, con su propio schema chico (2 miembros,
+// nada que ver con el límite de arriba) — ver generateExtraSlides() en route.ts.
+const TablaSlideSchema = z.object({
+    layout: z.literal('tabla'),
+    kicker: z.string(),
+    titulo: z.string(),
+    columnas: z.array(z.string()).describe('2 a 4 encabezados de columna.'),
+    filas: z.array(z.array(z.string())).describe('Cada fila es un array de celdas, mismo orden y cantidad que "columnas". Máximo 6 filas.'),
+    speakerNotes: z.string(),
+});
+
+const PasoItemSchema = z.object({
+    numero: z.number().describe('Número del paso, empezando en 1.'),
+    titulo: z.string(),
+    detalle: z.string().optional(),
+});
+
+const PasosSlideSchema = z.object({
+    layout: z.literal('pasos'),
+    kicker: z.string(),
+    titulo: z.string(),
+    contexto: z.string().optional(),
+    pasos: z.array(PasoItemSchema).describe('Entre 2 y 5 pasos — se distribuyen en columnas iguales.'),
+    speakerNotes: z.string(),
+});
+
+export type TablaSlide = z.infer<typeof TablaSlideSchema>;
+export type PasosSlide = z.infer<typeof PasosSlideSchema>;
+
+// Schema chico de la segunda llamada: decide si sumar 0-2 slides de tabla/pasos al set
+// principal ya generado, y dónde insertarlas. Separado de SlideSchema a propósito (ver
+// nota arriba) — este union de 2 miembros no se acerca al límite de complejidad.
+const ExtraSlideContentSchema = z.discriminatedUnion('layout', [TablaSlideSchema, PasosSlideSchema]);
+const ExtraSlideEntrySchema = z.object({
+    insertarDespuesDeSlide: z.number().describe('Número (1-based) de la slide principal después de la cual insertar esta, según el resumen que te paso.'),
+    slide: ExtraSlideContentSchema,
+});
+export const ExtraSlidesSchema = z.object({
+    extras: z.array(ExtraSlideEntrySchema).describe('0 a 2 slides adicionales — SOLO si el contenido real de la clase genuinamente tiene estructura tabular o un procedimiento secuencial que las slides principales no representan bien. Si no aplica, array vacío.'),
+});
+export type ExtraSlideEntry = z.infer<typeof ExtraSlideEntrySchema>;
+
+// Unión amplia (9 layouts) usada SOLO para validar/tipar el contenido ya fusionado
+// (slides principales + extras insertadas) — nunca se manda a Claude como output
+// schema, así que no le aplica el límite de complejidad de arriba.
+export const AnySlideSchema = z.discriminatedUnion('layout', [
+    PortadaSlideSchema,
+    BulletsSlideSchema,
+    CodigoSlideSchema,
+    ComparacionSlideSchema,
+    AnalogiaSlideSchema,
+    MapeoIconosSlideSchema,
+    ProblemaAlertasSlideSchema,
+    TablaSlideSchema,
+    PasosSlideSchema,
+]);
+export type AnySlide = z.infer<typeof AnySlideSchema>;
+
 // ── Guión docente y guía técnica (sin cambios en Fase 2 / Parte 2) ─────────
 
 const AnalogiaGuionSchema = z.object({
@@ -199,9 +263,11 @@ export const DocsOnlySchema = z.object({ guionDocente: GuionDocenteSchema, guiaT
 
 // guionDocente/guiaTecnica son opcionales: el docente puede pedir un kit de solo slides
 // (ver GenerateClassKit.tsx — checkboxes de qué partes generar). "slides" es el único
-// bloque siempre presente, el mínimo indispensable de un class kit.
+// bloque siempre presente, el mínimo indispensable de un class kit. Usa AnySlideSchema
+// (9 layouts, incluye tabla/pasos) porque esto valida el contenido YA fusionado de las
+// dos llamadas de generación — nunca se manda tal cual a Claude como output schema.
 export const ClassKitContentSchema = z.object({
-    slides: z.array(SlideSchema),
+    slides: z.array(AnySlideSchema),
     guionDocente: GuionDocenteSchema.optional(),
     guiaTecnica: GuiaTecnicaSchema.optional(),
 });

@@ -1,7 +1,7 @@
 import PptxGenJS from 'pptxgenjs';
 import type {
     ClassKitContent, PortadaSlide, BulletsSlide, CodigoSlide, ComparacionSlide,
-    AnalogiaSlide, MapeoIconosSlide, ProblemaAlertasSlide,
+    AnalogiaSlide, MapeoIconosSlide, ProblemaAlertasSlide, TablaSlide, PasosSlide,
 } from './schema';
 import { resolveAccent } from './palette';
 import { tokenizeCode } from './syntaxHighlight';
@@ -490,6 +490,128 @@ async function layoutProblemaAlertas(pres: PptxGenJS, T: Theme, slide_: Problema
     slide.addNotes(slide_.speakerNotes);
 }
 
+// ── Layout extra 1: Tabla de datos ─────────────────────────────────────────
+// No vive en el discriminated union principal de 7 layouts — ver nota junto a
+// TablaSlideSchema en schema.ts (límite de complejidad del compilador de Claude).
+function layoutTabla(pres: PptxGenJS, T: Theme, slide_: TablaSlide) {
+    const slide = pres.addSlide();
+    bgFill(slide, T);
+
+    slide.addText(slide_.kicker.toUpperCase(), {
+        x: 0.6, y: 0.5, w: 8, h: 0.35,
+        fontFace: 'Calibri', fontSize: 12, bold: true, color: T.accentBlue,
+        charSpacing: 1.2, margin: 0,
+    });
+    slide.addText(slide_.titulo, {
+        x: 0.6, y: 0.85, w: 11.5, h: 0.7,
+        fontFace: 'Cambria', fontSize: 26, bold: true, color: T.textMain, margin: 0,
+    });
+
+    const columnas = slide_.columnas;
+    if (columnas.length === 0) { slide.addNotes(slide_.speakerNotes); return; }
+    // Salvaguarda: más de 6 filas no entra en una sola slide de 13.3x7.5 con texto legible.
+    const filas = slide_.filas.slice(0, 6);
+    const colW = 12.1 / columnas.length;
+
+    const headerRow: PptxGenJS.TableRow = columnas.map((c) => ({
+        text: c,
+        options: { fill: { color: T.accentBlue }, color: 'FFFFFF', bold: true, fontFace: 'Calibri', fontSize: 13 },
+    }));
+    const bodyRows: PptxGenJS.TableRow[] = filas.map((f, i) =>
+        columnas.map((_, colIdx) => ({
+            text: f[colIdx] ?? '',
+            options: {
+                fill: { color: i % 2 === 0 ? T.cardBg : T.bg },
+                color: T.textMain, fontFace: 'Calibri', fontSize: 12.5,
+            },
+        })),
+    );
+
+    slide.addTable([headerRow, ...bodyRows], {
+        x: 0.6, y: 1.75, w: 12.1,
+        colW: Array(columnas.length).fill(colW),
+        border: { type: 'solid', color: T.cardBorder, pt: 0.5 },
+        autoPage: false,
+        valign: 'middle',
+        margin: [4, 8, 4, 8],
+    });
+
+    slide.addNotes(slide_.speakerNotes);
+}
+
+// ── Layout extra 2: Pasos numerados en columnas ────────────────────────────
+// Mismo esqueleto de columnas que mapeoIconos, con un círculo numerado en vez de un
+// ícono — para secuencias/procedimientos donde el orden importa más que un rol.
+function layoutPasos(pres: PptxGenJS, T: Theme, slide_: PasosSlide) {
+    const slide = pres.addSlide();
+    bgFill(slide, T);
+
+    slide.addText(slide_.kicker.toUpperCase(), {
+        x: 0.6, y: 0.5, w: 8, h: 0.35,
+        fontFace: 'Calibri', fontSize: 12, bold: true, color: T.accentTeal,
+        charSpacing: 1.2, margin: 0,
+    });
+    slide.addText(slide_.titulo, {
+        x: 0.6, y: 0.85, w: 11.5, h: 0.6,
+        fontFace: 'Cambria', fontSize: 26, bold: true, color: T.textMain, margin: 0,
+    });
+    if (slide_.contexto) {
+        slide.addText(slide_.contexto, {
+            x: 0.6, y: 1.45, w: 11.5, h: 0.5,
+            fontFace: 'Calibri', fontSize: 13.5, color: T.textMuted, margin: 0,
+        });
+    }
+
+    const pasos = slide_.pasos;
+    const n = pasos.length;
+    if (n === 0) { slide.addNotes(slide_.speakerNotes); return; }
+
+    const colW = 2.75;
+    const gap = n > 1 ? (12.1 - colW * n) / (n - 1) : 0;
+    const topY = 2.25;
+    const startX = n === 1 ? 0.6 + (12.1 - colW) / 2 : 0.6;
+
+    for (let i = 0; i < n; i++) {
+        const item = pasos[i];
+        const x = startX + i * (colW + gap);
+
+        slide.addShape('roundRect', {
+            x, y: topY, w: colW, h: 4.1, rectRadius: 0.1,
+            fill: { color: T.cardBg }, line: { color: T.cardBorder, width: 1 },
+        });
+        slide.addShape('ellipse', {
+            x: x + colW / 2 - 0.5, y: topY + 0.35, w: 1.0, h: 1.0,
+            fill: { color: T.bg }, line: { color: T.accentTeal, width: 1.5 },
+        });
+        slide.addText(String(item.numero), {
+            x: x + colW / 2 - 0.5, y: topY + 0.35, w: 1.0, h: 1.0,
+            align: 'center', valign: 'middle', fontFace: 'Cambria',
+            fontSize: 26, bold: true, color: T.accentTeal, margin: 0,
+        });
+        slide.addText(item.titulo, {
+            x: x + 0.15, y: topY + 1.55, w: colW - 0.3, h: 0.55,
+            align: 'center', fontFace: 'Calibri', fontSize: 15, bold: true,
+            color: T.textMain, margin: 0, valign: 'top',
+        });
+        if (item.detalle) {
+            slide.addText(item.detalle, {
+                x: x + 0.2, y: topY + 2.2, w: colW - 0.4, h: 1.7,
+                align: 'center', fontFace: 'Calibri', fontSize: 12, color: T.textMuted,
+                margin: 0, valign: 'top', lineSpacingMultiple: 1.15,
+            });
+        }
+
+        if (i < n - 1) {
+            slide.addShape('rightArrow', {
+                x: x + colW, y: topY + 1.85, w: gap, h: 0.25,
+                fill: { color: T.cardBorder }, line: { type: 'none' },
+            });
+        }
+    }
+
+    slide.addNotes(slide_.speakerNotes);
+}
+
 export interface RenderClassKitOptions {
     theme?: ClassKitTheme;
     accentColor?: string | null;
@@ -524,6 +646,12 @@ export async function renderClassKitPptx(content: ClassKitContent, options: Rend
                 break;
             case 'problemaAlertas':
                 await layoutProblemaAlertas(pres, T, slide);
+                break;
+            case 'tabla':
+                layoutTabla(pres, T, slide);
+                break;
+            case 'pasos':
+                layoutPasos(pres, T, slide);
                 break;
         }
     }

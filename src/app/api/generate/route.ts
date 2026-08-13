@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { SlidesOnlySchema, GuionDocenteSchema, GuiaTecnicaSchema, ICON_NAMES, type ClassKitContent } from '@/lib/classKit/schema';
+import { SlidesOnlySchema, GuionDocenteSchema, GuiaTecnicaSchema, ExtraSlidesSchema, ICON_NAMES, type ClassKitContent, type ExtraSlideEntry } from '@/lib/classKit/schema';
 
 const techStackContext = (techStack?: string) =>
     techStack?.trim()
@@ -292,6 +292,28 @@ const SLIDES_SYSTEM_PROMPT =
     `Elegís QUÉ layout usa cada slide y el ícono cuando aplique, pero nunca definas colores, posiciones ni ` +
     `tipografías — eso ya está fijo en la plantilla de renderizado para cada layout.`;
 
+// Segunda llamada aparte, con su propio schema chico (ver ExtraSlidesSchema en schema.ts) —
+// nunca combinada con SLIDES_SYSTEM_PROMPT en la misma llamada porque el discriminated union
+// de 7 layouts ya está en el límite de complejidad del compilador de structured outputs de
+// Claude. Decide si sumar 0-2 slides de tabla/pasos al set principal ya generado.
+const EXTRA_SLIDES_SYSTEM_PROMPT =
+    `Ya existe la estructura principal de slides de una clase (te paso el resumen numerado en el mensaje). ` +
+    `Tu única tarea es decidir si conviene sumar 0, 1 o 2 slides ADICIONALES — nunca reemplaces, edites ni ` +
+    `repitas el contenido de las slides existentes:\n` +
+    `- "tabla": una tabla de datos real (ej. tipos de excepción, métodos de una clase, comparación de varias ` +
+    `opciones con varios atributos). Campos: kicker, titulo, columnas (2 a 4 encabezados), filas (array de ` +
+    `arrays de celdas — cada fila es un array con una celda por columna, mismo orden y cantidad que ` +
+    `"columnas"). Máximo 6 filas.\n` +
+    `- "pasos": una secuencia numerada de 2 a 5 pasos en columnas, para procedimientos donde el ORDEN importa ` +
+    `(ej. "así se prueba/depura esto"). Campos: kicker, titulo, contexto opcional, pasos[] ({numero, titulo, ` +
+    `detalle opcional}).\n` +
+    `Agregá una slide SOLO si el contenido real de la clase genuinamente tiene estructura tabular o un ` +
+    `procedimiento secuencial que las slides existentes no representan bien — si ya está bien cubierto, ` +
+    `devolvé "extras": [] sin forzar nada por completar el cupo.\n` +
+    `Por cada slide que agregues, "insertarDespuesDeSlide" es el número (según el resumen que te paso) de la ` +
+    `slide existente después de la cual debería ir — elegí un lugar temáticamente coherente, no el final a ` +
+    `secas. speakerNotes va SIEMPRE presente.`;
+
 // El docente puede pedir el kit sin guión y/o sin guía técnica (checkboxes en
 // GenerateClassKit.tsx) — el prompt y el schema de esta segunda llamada se arman según
 // qué se pidió, en vez de pedir siempre ambos bloques y descartar el que sobra.
@@ -381,6 +403,30 @@ function slidesContentBlock(exerciseContext?: string): string {
     return exerciseContext?.trim() ? `\n\nEjercicio de clase real (ya generado para esta semana):\n${exerciseContext.trim()}` : '';
 }
 
+function summarizeSlides(slides: ClassKitContent['slides']): string {
+    return slides
+        .map((s, i) => `${i + 1}. [${s.layout}] ${'titulo' in s ? s.titulo : s.nombreAnalogia}`)
+        .join('\n');
+}
+
+// Inserta las slides "extra" (tabla/pasos, generadas en una llamada aparte — ver nota junto
+// a ExtraSlidesSchema en schema.ts) en el punto que indicó el modelo. Se ordenan por posición
+// ascendente y se acumula un offset al insertar, para que "insertarDespuesDeSlide" siga
+// refiriéndose a la numeración ORIGINAL (la que el modelo vio en el resumen) y no se desalinee
+// a medida que se van sumando slides previas en el mismo array.
+function mergeExtraSlides(coreSlides: ClassKitContent['slides'], extras: ExtraSlideEntry[]): ClassKitContent['slides'] {
+    if (extras.length === 0) return coreSlides;
+    const merged: ClassKitContent['slides'] = [...coreSlides];
+    const sorted = [...extras].sort((a, b) => a.insertarDespuesDeSlide - b.insertarDespuesDeSlide);
+    let offset = 0;
+    for (const extra of sorted) {
+        const insertAt = Math.min(Math.max(extra.insertarDespuesDeSlide, 0), coreSlides.length) + offset;
+        merged.splice(insertAt, 0, extra.slide);
+        offset += 1;
+    }
+    return merged;
+}
+
 async function generateClassKit(
     subjectName: string,
     weekTopic: string,
@@ -431,20 +477,29 @@ async function generateClassKit(
 
     const slidesPrompt = `Materia: ${subjectName}. Tema de la clase de esta semana: ${weekTopic}.` +
         contextSuffix + previousSuffix + nextSuffix + slidesContentSuffix;
-    const { slides } = await callClaude<{ slides: ClassKitContent['slides'] }>(
+    const { slides: coreSlides } = await callClaude<{ slides: ClassKitContent['slides'] }>(
         'slides', SLIDES_SYSTEM_PROMPT, slidesPrompt, SlidesOnlySchema,
     );
 
+    const coreSlidesSummary = summarizeSlides(coreSlides);
+    const extrasPrompt =
+        `Materia: ${subjectName}. Tema de la clase de esta semana: ${weekTopic}.` + contextSuffix +
+        `\n\nSlides ya generadas (índice. [layout] título):\n${coreSlidesSummary}`;
+    const { extras } = await callClaude<{ extras: ExtraSlideEntry[] }>(
+        'extraSlides', EXTRA_SLIDES_SYSTEM_PROMPT, extrasPrompt, ExtraSlidesSchema,
+    );
+    const slides = mergeExtraSlides(coreSlides, extras);
+
     const { guionDocente: wantsGuion, guiaTecnica: wantsGuia } = include;
     if (!wantsGuion && !wantsGuia) {
-        // Kit de solo slides: la segunda llamada (guionDocente/guiaTecnica) se omite por
-        // completo, no se genera contenido para descartar después.
+        // Kit de solo slides: la segunda llamada de docs (guionDocente/guiaTecnica) se omite
+        // por completo, no se genera contenido para descartar después.
         return { slides };
     }
 
-    const slidesSummary = slides
-        .map((s, i) => `${i + 1}. [${s.layout}] ${'titulo' in s ? s.titulo : s.nombreAnalogia}`)
-        .join('\n');
+    // Recalculada sobre el set YA fusionado (core + extras) — así slideRef en guionDocente
+    // referencia la numeración final real, no la de antes de insertar las extras.
+    const slidesSummary = summarizeSlides(slides);
     const docsPrompt =
         `Materia: ${subjectName}. Tema de la clase de esta semana: ${weekTopic}.` +
         contextSuffix + previousSuffix + nextSuffix + currentContentSuffix +
