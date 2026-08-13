@@ -349,7 +349,7 @@ export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMod
 
                         {/* Error */}
                         {error && (
-                            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 border border-red-200">{error}</p>
+                            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 border border-red-200 transition-[opacity,transform] duration-150 ease-snappy starting:opacity-0 starting:-translate-y-1 motion-reduce:starting:translate-y-0">{error}</p>
                         )}
 
                         {/* Result */}

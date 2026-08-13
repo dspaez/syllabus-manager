@@ -192,7 +192,7 @@ export default function ProfilePage() {
                     <button
                         type="submit"
                         disabled={saving}
-                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-semibold px-6 py-2.5 rounded-xl transition-colors disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-semibold px-6 py-2.5 rounded-xl transition-[background-color,transform] duration-100 ease-snappy active:scale-[0.98] disabled:cursor-not-allowed"
                     >
                         {saving ? (
                             <>
@@ -203,10 +203,10 @@ export default function ProfilePage() {
                     </button>
 
                     {status === 'saved' && (
-                        <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">✓ Cambios guardados</span>
+                        <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium transition-[opacity,transform] duration-150 ease-snappy starting:opacity-0 starting:-translate-y-1 motion-reduce:starting:translate-y-0">✓ Cambios guardados</span>
                     )}
                     {status === 'error' && (
-                        <span className="text-sm text-red-600 dark:text-red-400 font-medium">
+                        <span className="text-sm text-red-600 dark:text-red-400 font-medium transition-[opacity,transform] duration-150 ease-snappy starting:opacity-0 starting:-translate-y-1 motion-reduce:starting:translate-y-0">
                             Error: {errorMsg}
                         </span>
                     )}

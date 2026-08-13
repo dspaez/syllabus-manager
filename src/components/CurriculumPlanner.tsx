@@ -271,7 +271,7 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
 
                             {/* Error */}
                             {error && (
-                                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+                                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl transition-[opacity,transform] duration-150 ease-snappy starting:opacity-0 starting:-translate-y-1 motion-reduce:starting:translate-y-0">
                                     {error}
                                 </div>
                             )}

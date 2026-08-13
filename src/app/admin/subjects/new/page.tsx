@@ -191,7 +191,7 @@ export default function NewSubjectPage() {
 
                 {/* Error */}
                 {error && (
-                    <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-900/50 rounded-lg px-3 py-2">
+                    <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-900/50 rounded-lg px-3 py-2 transition-[opacity,transform] duration-150 ease-snappy starting:opacity-0 starting:-translate-y-1 motion-reduce:starting:translate-y-0">
                         {error}
                     </p>
                 )}
@@ -201,7 +201,7 @@ export default function NewSubjectPage() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-[background-color,transform] duration-100 ease-snappy active:scale-[0.98]"
                     >
                         {loading ? 'Guardando...' : 'Guardar'}
                     </button>

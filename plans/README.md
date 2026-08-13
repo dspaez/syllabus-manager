@@ -7,12 +7,14 @@ Plans written by `improve-animations`. Each is self-contained; see the individua
 | 001 | [Animate the entrance of the 5 AI-generation modals](001-ai-modal-entrance.md) | MEDIUM | DONE (commit `f157103`) |
 | 002 | [Bridge the accordion/collapse content teleport in WeeksAccordion and CurriculumPlanner](002-accordion-height-transition.md) | MEDIUM | PARTIALLY MOOT — Target 1 superseded by 003 (DONE); Target 2 (`CurriculumPlanner.tsx`) DONE (commit `cbd535b`) |
 | 003 | [Bridge the week-collapse content teleport in SubjectContent.tsx (the real, live component)](003-subject-content-week-collapse.md) | MEDIUM | DONE (commit `5dca295`) |
+| 004 | [Fade in inline save/error feedback; add press feedback to form submit buttons](004-feedback-fade-and-press-states.md) | LOW-MEDIUM | TODO |
 
 ## Execution order
 
 - Plan 001: done and merged (`f157103`).
 - Plan 002: only its `CurriculumPlanner.tsx` half was real; merged (`cbd535b`). `WeeksAccordion.tsx` no longer exists.
 - Plan 003: done and merged (`5dca295`), browser-verified live (expand/collapse, dark mode).
+- Plan 004: not yet executed. Independent of 001-003 (no shared files), but reuses the `--ease-snappy` token from plan 001 — that token must already exist in `src/app/globals.css` (it does, as of `f157103`) before plan 004 runs.
 
 ## Notes
 
@@ -21,4 +23,5 @@ Plans written by `improve-animations`. Each is self-contained; see the individua
 - Source sweep plans 001 and 002 came from: a `find-animation-opportunities` pass across the whole app (see conversation history) identified 6 opportunities total.
   - #1 → plan 001. DONE.
   - #2 (weeks height transition) + #6 (CurriculumPlanner nested unit-collapse) → merged into plan 002. #2 corrected and re-targeted as plan 003 after the dead-code discovery; #6 (in plan 002) stands.
-  - #3 (inline save/error feedback fade), #4 (form submit press feedback), #5 (ThemeToggle icon crossfade) are not yet planned — ask for `improve-animations plan <description>` on any of them when ready.
+  - #3 (inline save/error feedback fade) + #4 (form submit press feedback) → merged into plan 004, since both reuse `--ease-snappy` and touch a heavily-overlapping file set (10 of 16 files appear in both parts).
+  - #5 (ThemeToggle icon crossfade) is not yet planned — ask for `improve-animations plan <description>` when ready.

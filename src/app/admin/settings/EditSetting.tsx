@@ -40,7 +40,7 @@ export default function EditSetting({ settingKey, initialValue }: Props) {
                 <button
                     onClick={handleSave}
                     disabled={saving || !isDirty}
-                    className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:text-slate-500 dark:disabled:text-slate-400 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:text-slate-500 dark:disabled:text-slate-400 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-[background-color,transform] duration-100 ease-snappy active:scale-[0.98] disabled:cursor-not-allowed"
                 >
                     {saving ? (
                         <>
@@ -50,10 +50,10 @@ export default function EditSetting({ settingKey, initialValue }: Props) {
                     ) : 'Guardar'}
                 </button>
                 {status === 'saved' && (
-                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">✓ Guardado</span>
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium transition-[opacity,transform] duration-150 ease-snappy starting:opacity-0 starting:-translate-y-1 motion-reduce:starting:translate-y-0">✓ Guardado</span>
                 )}
                 {status === 'error' && (
-                    <span className="text-xs text-red-600 dark:text-red-400 font-medium">Error al guardar</span>
+                    <span className="text-xs text-red-600 dark:text-red-400 font-medium transition-[opacity,transform] duration-150 ease-snappy starting:opacity-0 starting:-translate-y-1 motion-reduce:starting:translate-y-0">Error al guardar</span>
                 )}
             </div>
         </div>
