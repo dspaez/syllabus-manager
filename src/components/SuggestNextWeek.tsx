@@ -9,6 +9,7 @@ interface RecentWeek {
     title: string | null;
     description: string | null;
     exerciseTitle: string | null;
+    exerciseConcepts: string[];
     dictada: boolean;
 }
 

@@ -80,6 +80,24 @@ export default async function SubjectPage({
         return null;
     }
 
+    // Los conceptos REALMENTE practicados en el ejercicio ya generado — no el título/descripción
+    // de la semana (que es el plan, escrito antes de generar contenido, y puede ir menos lejos de
+    // lo que el ejercicio terminó cubriendo en la práctica). Sin esto, "Sugerir próxima semana"
+    // podía proponer un tema que el ejercicio real de la semana anterior ya había cubierto de
+    // hecho (ej. semana 1 ya practicó constructores/getters aunque su título fuera solo "intro").
+    function exerciseConceptsFor(week: UnitWeek): string[] {
+        for (const m of week.materials ?? []) {
+            if (m.source !== 'ai' || !m.description) continue;
+            try {
+                const parsed = JSON.parse(m.description) as { ejercicioClase?: { conceptos?: string[] } };
+                if (parsed.ejercicioClase?.conceptos?.length) return parsed.ejercicioClase.conceptos;
+            } catch {
+                continue;
+            }
+        }
+        return [];
+    }
+
     const allWeeksOrdered = typedUnits.flatMap((u) =>
         [...u.weeks].sort((a, b) => a.number - b.number).map((w) => ({ ...w, unitId: u.id, unitName: u.name }))
     );
@@ -151,7 +169,13 @@ export default async function SubjectPage({
         .slice(0, targetGlobalIndex)
         .filter((w) => w.title && w.title.trim())
         .slice(-4)
-        .map((w) => ({ title: w.title, description: w.description, exerciseTitle: exerciseTitleFor(w), dictada: w.dictada }));
+        .map((w) => ({
+            title: w.title,
+            description: w.description,
+            exerciseTitle: exerciseTitleFor(w),
+            exerciseConcepts: exerciseConceptsFor(w),
+            dictada: w.dictada,
+        }));
 
     const totalWeeks = typedUnits.reduce((acc, u) => acc + (u.weeks?.length ?? 0), 0);
     const totalMaterials = typedUnits.reduce(

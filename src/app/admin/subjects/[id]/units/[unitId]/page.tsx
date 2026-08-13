@@ -236,7 +236,10 @@ export default async function UnitPage({
     // extendió el doc técnico, cae al de la última semana anterior que sí lo tenga, nunca a uno
     // futuro); 'topics' usa los títulos de las últimas semanas anteriores. Requiere mirar más
     // allá de esta unidad, así que se trae aparte con una sola consulta subject-wide.
-    let subjectWeeksOrdered: { id: string; number: number; title: string | null; technical_document_snapshot: string | null; dictada: boolean }[] = [];
+    let subjectWeeksOrdered: {
+        id: string; number: number; title: string | null; technical_document_snapshot: string | null;
+        dictada: boolean; materials: { source: string | null; description: string | null }[] | null;
+    }[] = [];
     if (s?.course_mode === 'project' || s?.course_mode === 'topics') {
         const { data: subjectUnitsOrdered } = await supabase
             .from('units')
@@ -247,7 +250,7 @@ export default async function UnitPage({
         if (orderedUnitIds.length > 0) {
             const { data: subjectWeeksRaw } = await supabase
                 .from('weeks')
-                .select('id, number, title, technical_document_snapshot, dictada, unit_id')
+                .select('id, number, title, technical_document_snapshot, dictada, unit_id, materials(source, description)')
                 .in('unit_id', orderedUnitIds);
             const unitIndexById = new Map(orderedUnitIds.map((uid, i) => [uid, i]));
             subjectWeeksOrdered = (subjectWeeksRaw ?? []).slice().sort((a, b) => {
@@ -265,6 +268,23 @@ export default async function UnitPage({
             if (subjectWeeksOrdered[i].technical_document_snapshot) return subjectWeeksOrdered[i].technical_document_snapshot;
         }
         return null;
+    }
+
+    // Los conceptos REALMENTE practicados en el ejercicio ya generado de esa semana — no solo su
+    // título. Mismo motivo que en subjects/[id]/page.tsx: un ejercicio real puede ir más lejos de
+    // lo que su título sugiere, y sin esta señal "Generar con IA" podía terminar repitiendo en la
+    // semana siguiente conceptos (constructores, getters, etc.) que ya se habían practicado.
+    function exerciseConceptsFor(w: { materials: { source: string | null; description: string | null }[] | null }): string[] {
+        for (const m of w.materials ?? []) {
+            if (m.source !== 'ai' || !m.description) continue;
+            try {
+                const parsed = JSON.parse(m.description) as { ejercicioClase?: { conceptos?: string[] } };
+                if (parsed.ejercicioClase?.conceptos?.length) return parsed.ejercicioClase.conceptos;
+            } catch {
+                continue;
+            }
+        }
+        return [];
     }
 
     function exercisePreviousTitlesFor(week: Week): string[] {

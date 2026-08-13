@@ -152,27 +152,35 @@ function exercisesPrompt(
     const contextBlock = courseMode === 'project' && exerciseProjectContext?.trim()
         ? `\nContexto real del proyecto hasta este punto del curso (arquitectura y convenciones ya construidas — el ejercicio tiene que ser coherente con esto, un dominio/stack paralelo NO):\n${exerciseProjectContext.trim()}\n`
         : courseMode === 'topics' && exercisePreviousTitles && exercisePreviousTitles.length > 0
-        ? `\nTemas ya dictados en semanas anteriores (no repitas conceptos ya cubiertos, construí sobre ellos cuando aplique): ${exercisePreviousTitles.join(', ')}.\n`
+        ? `\nTemas y ejercicios ya dados en semanas anteriores (no repitas los conceptos ya practicados ahí, construí sobre ellos cuando aplique):\n- ${exercisePreviousTitles.join('\n- ')}\n`
         : '';
     return (
         `Eres un docente universitario diseñando el ejercicio principal de una clase de programación sobre ${topic}. ` +
         techStackContext(techStack) +
         contextBlock +
+        `\nIMPORTANTE sobre el alcance: el ejercicio debe practicar EXACTAMENTE lo que describe "${topic}", ni más ni ` +
+        `menos. Si el tema es introductorio o conceptual, el ejercicio también debe serlo (ej. una clase simple con ` +
+        `pocos atributos e instanciar un par de objetos) — no te adelantes a incorporar técnicas de temas más ` +
+        `avanzados (constructores parametrizados con validaciones, encapsulamiento con getters/setters, herencia, ` +
+        `etc.) salvo que el propio tema ya las mencione explícitamente. Esas técnicas quedan para cuando el tema de ` +
+        `esa semana las introduzca.\n` +
         `\nGenera:\n` +
         `1. UN ejercicio principal de clase (ejercicioClase), no una lista de ejercicios sueltos. Debe tener:\n` +
         `   - titulo: título breve del ejercicio.\n` +
         `   - contexto: un escenario de negocio realista y pertinente al tema (ej. para encapsulamiento, algo como ` +
         `"billetera digital" o "sistema de pedidos" — inventa uno que encaje con ${topic}, no uses un dominio genérico).\n` +
-        `   - requerimientos: lista paso a paso de qué debe crear el estudiante (clases, atributos con su modificador ` +
-        `de acceso, constructor, métodos, validaciones específicas de negocio), usando la sintaxis y convenciones del ` +
-        `lenguaje/stack indicado.\n` +
+        `   - requerimientos: lista paso a paso de qué debe crear el estudiante, acotada al alcance del tema (ver ` +
+        `regla de arriba), usando la sintaxis y convenciones del lenguaje/stack indicado.\n` +
+        `   - conceptos: lista breve (3 a 6 ítems) de los conceptos técnicos concretos que el estudiante practica al ` +
+        `resolver este ejercicio (ej. ["instanciación de objetos", "constructores", "getters/setters"]) — se usa ` +
+        `para no repetir contenido ya practicado en semanas futuras.\n` +
         `   - solucionDocente: el código COMPLETO que resuelve el ejercicio, en un campo separado del contexto y los ` +
         `requerimientos (esta parte se oculta/muestra aparte en la interfaz, para poder proyectar solo el enunciado en clase).\n` +
         `2. Opcionalmente HASTA 2 variantes para tarea en casa (ejerciciosTarea, máximo 2 — no más): mismo patrón completo (titulo, contexto, ` +
-        `requerimientos, solucionDocente), cada una con un dominio de negocio DISTINTO al del ejercicio de clase y entre sí. ` +
+        `requerimientos, solucionDocente — sin "conceptos", ese campo es solo del ejercicio de clase), cada una con un dominio de negocio DISTINTO al del ejercicio de clase y entre sí. ` +
         `No son simplificaciones del ejercicio de clase — son ejercicios paralelos de dificultad equivalente.\n` +
         `Responde en español, SOLO en formato JSON sin markdown ni bloques de código: ` +
-        `{ "ejercicioClase": { "titulo": "", "contexto": "", "requerimientos": [], "solucionDocente": "" }, ` +
+        `{ "ejercicioClase": { "titulo": "", "contexto": "", "requerimientos": [], "conceptos": [], "solucionDocente": "" }, ` +
         `"ejerciciosTarea": [{ "titulo": "", "contexto": "", "requerimientos": [], "solucionDocente": "" }] }`
     );
 }
@@ -457,6 +465,7 @@ interface RecentWeekSummary {
     title: string | null;
     description: string | null;
     exerciseTitle: string | null;
+    exerciseConcepts: string[];
     dictada: boolean;
 }
 
@@ -488,6 +497,12 @@ const SUGGEST_NEXT_WEEK_SYSTEM_PROMPT =
     `no dictada aún". Las planificadas son títulos que el docente ya cargó por adelantado pero todavía no ` +
     `dio en clase — tratalas como continuidad temática válida (no repitas su contenido), pero no asumas ` +
     `que el estudiante ya vio ese material en la práctica.\n` +
+    `- Cuando una semana reciente tiene "Conceptos ya practicados en ese ejercicio", esos conceptos son ` +
+    `la fuente de verdad de lo que el estudiante YA construyó en la práctica — más confiable que el título ` +
+    `o la descripción de la semana, que son solo el plan. Es común que un ejercicio real vaya más lejos ` +
+    `de lo que su título sugiere (ej. una semana "introductoria" cuyo ejercicio ya construyó una clase ` +
+    `completa con constructor y getters). NO propongas como tema nuevo algo que esa lista ya cubre — andá ` +
+    `directo al siguiente concepto real que falte, aunque el título de la semana anterior sonara más básico.\n` +
     `- Si te paso información de una unidad B además de la unidad A actual, decidís vos a qué unidad ` +
     `pertenece el tema que proponés, comparando el tema natural que sigue contra la descripción y los ` +
     `temas ya cubiertos de cada unidad — nunca por defecto ni por conteo de semanas. Recién cruzás a la ` +
@@ -536,6 +551,7 @@ async function generateSuggestNextWeek(params: {
                 const bits = [`${i + 1}. (${estado}) ${w.title ?? '(sin título)'}`];
                 if (w.description) bits.push(`   ${w.description}`);
                 if (w.exerciseTitle) bits.push(`   Ejercicio ya dado: ${w.exerciseTitle}`);
+                if (w.exerciseConcepts.length > 0) bits.push(`   Conceptos ya practicados en ese ejercicio: ${w.exerciseConcepts.join(', ')}`);
                 return bits.join('\n');
             })
             .join('\n');
