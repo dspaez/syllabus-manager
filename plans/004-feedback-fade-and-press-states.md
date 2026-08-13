@@ -1,6 +1,6 @@
 # 004 — Fade in inline save/error feedback; add press feedback to form submit buttons
 
-- **Status**: TODO
+- **Status**: DONE (commit `fc7f6eb`)
 - **Commit**: 8d52bd3
 - **Severity**: LOW-MEDIUM (feedback gap, not feel-breaking — no HIGH-severity finding here)
 - **Category**: Feedback / Interruptibility
