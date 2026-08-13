@@ -574,7 +574,7 @@ async function generateSuggestNextWeek(params: {
 export async function POST(request: NextRequest) {
     try {
         const {
-            type, topic, modality, hoursPerWeek, subjectName, weekTopic,
+            type, topic, subjectName, weekTopic,
             previousWeekTopic, nextWeekTopic, exerciseContext, projectContext,
             previousDocument, techStack, include,
             subjectDescription, courseMode, technicalDocument, recentWeeks,
@@ -583,8 +583,6 @@ export async function POST(request: NextRequest) {
         } = await request.json() as {
             type: string;
             topic?: string;
-            modality?: string;
-            hoursPerWeek?: number;
             subjectName?: string;
             weekTopic?: string;
             previousWeekTopic?: string;
@@ -680,18 +678,9 @@ export async function POST(request: NextRequest) {
             });
             const prompt =
                 `Eres un experto en educación universitaria. Busca en internet las tendencias más actuales de ${topic} en 2026. ` +
-                `Genera un plan curricular de 16 semanas para una asignatura universitaria sobre ${topic}. ` +
-                `Modalidad: ${modality ?? 'Presencial'}. Horas semanales: ${hoursPerWeek ?? 4}. ` +
-                `IMPORTANTE sobre la modalidad: ` +
-                `El contenido y los temas deben ser EXACTAMENTE LOS MISMOS independientemente de la modalidad. ` +
-                `Lo que cambia según las horas es la PROFUNDIDAD de cada tema: ` +
-                `1 hora (línea): tema introductorio, conceptos clave sin práctica extensa; ` +
-                `2 horas (semi): conceptos + ejercicio práctico básico; ` +
-                `3-4 horas (presencial): conceptos + práctica + ejercicio aplicado. ` +
-                `Agrega un campo 'depth' por semana que indique el nivel de profundidad sugerido según las horas disponibles. ` +
-                `Agrupa las semanas en unidades temáticas lógicas. ` +
+                `Genera un plan curricular de 16 semanas para una asignatura universitaria sobre ${topic}, agrupado en unidades temáticas lógicas. ` +
                 `Responde SOLO en JSON sin markdown: ` +
-                `{ "summary": "máximo 3 líneas sobre tendencias actuales", "units": [{ "name": "nombre de la unidad", "order": 1, "weeks": [{ "number": 1, "title": "título conciso", "topics": ["tema1", "tema2"], "depth": "descripción de qué tan profundo ir según las horas", "justification": "máximo 1 línea" }] }] }`;
+                `{ "summary": "máximo 3 líneas sobre tendencias actuales", "units": [{ "name": "nombre de la unidad", "order": 1, "weeks": [{ "number": 1, "title": "título conciso", "topics": ["tema1", "tema2"], "justification": "máximo 1 línea" }] }] }`;
             const result = await model.generateContent(prompt);
             const text = result.response.text();
 

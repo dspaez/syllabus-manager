@@ -22,25 +22,10 @@ function ChevronIcon({ isOpen }: { isOpen: boolean }) {
     );
 }
 
-type Modality = 'presencial' | 'semipresencial' | 'linea';
-
-const MODALITY_LABELS: Record<Modality, string> = {
-    presencial: 'Presencial (3-4 horas)',
-    semipresencial: 'Semipresencial (2 horas)',
-    linea: 'En línea (1 hora)',
-};
-
-const MODALITY_HOURS: Record<Modality, number> = {
-    presencial: 4,
-    semipresencial: 2,
-    linea: 1,
-};
-
 interface PlanWeek {
     number: number;
     title: string;
     topics: string[];
-    depth?: string;
     justification: string;
 }
 
@@ -60,8 +45,6 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
 
     const [open, setOpen] = useState(false);
     const [topic, setTopic] = useState('');
-    const [modality, setModality] = useState<Modality>('presencial');
-    const [hoursPerWeek, setHoursPerWeek] = useState<number>(4);
     const [loading, setLoading] = useState(false);
     const [plan, setPlan] = useState<CurriculumPlan | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -77,8 +60,6 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
         setPlan(null);
         setError(null);
         setTopic('');
-        setModality('presencial');
-        setHoursPerWeek(4);
         setSaved(false);
         setSavingStep(null);
         setCollapsed(new Set());
@@ -87,11 +68,6 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
 
     function closeModal() {
         setOpen(false);
-    }
-
-    function handleModalityChange(m: Modality) {
-        setModality(m);
-        setHoursPerWeek(MODALITY_HOURS[m]);
     }
 
     function toggleUnit(order: number) {
@@ -116,8 +92,6 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
                 body: JSON.stringify({
                     type: 'curriculum',
                     topic: topic.trim(),
-                    modality: MODALITY_LABELS[modality],
-                    hoursPerWeek,
                 }),
             });
             if (!res.ok) {
@@ -212,33 +186,6 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
                         {/* Scrollable body */}
                         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
 
-                            {/* Modality + hours row */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="block text-xs font-semibold text-gray-700">Modalidad</label>
-                                    <select
-                                        value={modality}
-                                        onChange={(e) => handleModalityChange(e.target.value as Modality)}
-                                        className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                                    >
-                                        {(Object.entries(MODALITY_LABELS) as [Modality, string][]).map(([val, label]) => (
-                                            <option key={val} value={val}>{label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="block text-xs font-semibold text-gray-700">Horas semanales</label>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        max={8}
-                                        value={hoursPerWeek}
-                                        onChange={(e) => setHoursPerWeek(Number(e.target.value))}
-                                        className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                                    />
-                                </div>
-                            </div>
-
                             {/* Topic input */}
                             <div className="space-y-1.5">
                                 <label className="block text-xs font-semibold text-gray-700">
@@ -332,11 +279,6 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
                                                                             </span>
                                                                         ))}
                                                                     </div>
-                                                                    {week.depth && (
-                                                                        <p className="text-xs text-violet-600 bg-violet-50 rounded-lg px-2.5 py-1 mb-1.5 ml-7">
-                                                                            🎯 {week.depth}
-                                                                        </p>
-                                                                    )}
                                                                     {week.justification && (
                                                                         <p className="text-xs text-gray-400 leading-relaxed pl-7">
                                                                             {week.justification}
