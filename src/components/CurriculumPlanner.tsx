@@ -171,12 +171,12 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     {/* Backdrop */}
                     <div
-                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 ease-snappy starting:opacity-0"
                         onClick={closeModal}
                     />
 
                     {/* Panel */}
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col transition-[opacity,transform] duration-200 ease-snappy starting:opacity-0 starting:scale-95 motion-reduce:starting:scale-100">
 
                         {/* Header */}
                         <div className="flex items-start justify-between px-6 py-5 border-b border-gray-100">
