@@ -59,15 +59,15 @@ export default function NewSubjectPage() {
 
     return (
         <div className="p-8 max-w-lg">
-            <h1 className="text-2xl font-semibold text-gray-800 mb-6">Nueva asignatura</h1>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-6">Nueva asignatura</h1>
 
             <form
                 onSubmit={handleSubmit}
-                className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-5"
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-6 space-y-5"
             >
                 {/* Nombre */}
                 <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         Nombre <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -77,13 +77,13 @@ export default function NewSubjectPage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Ej. Cálculo diferencial"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
 
                 {/* Descripción */}
                 <div>
-                    <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="description" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         Descripción
                     </label>
                     <textarea
@@ -92,14 +92,14 @@ export default function NewSubjectPage() {
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="Descripción breve de la asignatura"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                     />
                 </div>
 
                 {/* Color + Semestre */}
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label htmlFor="color" className="block text-sm font-medium text-gray-700 mb-1">
+                        <label htmlFor="color" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                             Color
                         </label>
                         <div className="flex items-center gap-2">
@@ -108,21 +108,21 @@ export default function NewSubjectPage() {
                                 type="color"
                                 value={color}
                                 onChange={(e) => setColor(e.target.value)}
-                                className="h-9 w-12 cursor-pointer rounded border border-gray-300 p-0.5"
+                                className="h-9 w-12 cursor-pointer rounded border border-slate-300 dark:border-slate-700 p-0.5"
                             />
-                            <span className="text-xs text-gray-500 font-mono">{color}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">{color}</span>
                         </div>
                     </div>
 
                     <div>
-                        <label htmlFor="semester" className="block text-sm font-medium text-gray-700 mb-1">
+                        <label htmlFor="semester" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                             Semestre
                         </label>
                         <select
                             id="semester"
                             value={semesterId}
                             onChange={(e) => setSemesterId(e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                         >
                             <option value="">Sin semestre</option>
                             {semesters.map((s) => (
@@ -136,25 +136,25 @@ export default function NewSubjectPage() {
 
                 {/* Tipo de materia + Stack */}
                 <div>
-                    <label htmlFor="courseMode" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="courseMode" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         Tipo de materia
                     </label>
                     <select
                         id="courseMode"
                         value={courseMode}
                         onChange={(e) => setCourseMode(e.target.value as 'project' | 'topics')}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     >
                         <option value="topics">Temas con ejercicios</option>
                         <option value="project">Proyecto progresivo</option>
                     </select>
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                         &ldquo;Proyecto progresivo&rdquo; habilita el documento técnico evolutivo del proyecto.
                     </p>
                 </div>
 
                 <div>
-                    <label htmlFor="accentColor" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="accentColor" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         Color de acento (Class Kit)
                     </label>
                     <div className="flex items-center gap-2">
@@ -163,17 +163,17 @@ export default function NewSubjectPage() {
                             type="color"
                             value={accentColor}
                             onChange={(e) => setAccentColor(e.target.value)}
-                            className="h-9 w-12 cursor-pointer rounded border border-gray-300 p-0.5"
+                            className="h-9 w-12 cursor-pointer rounded border border-slate-300 dark:border-slate-700 p-0.5"
                         />
-                        <span className="text-xs text-gray-500 font-mono">{accentColor}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">{accentColor}</span>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                         Color protagonista de la portada y los tags al generar un Class Kit. Los colores por tipo de slide (problema, solución, etc.) son fijos.
                     </p>
                 </div>
 
                 <div>
-                    <label htmlFor="techStack" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="techStack" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         Stack tecnológico
                     </label>
                     <input
@@ -182,16 +182,16 @@ export default function NewSubjectPage() {
                         value={techStack}
                         onChange={(e) => setTechStack(e.target.value)}
                         placeholder='Ej. "Python 3.11", "Java 17", "Next.js + Supabase"'
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                         Se usa como contexto al generar contenido con IA.
                     </p>
                 </div>
 
                 {/* Error */}
                 {error && (
-                    <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-900/50 rounded-lg px-3 py-2">
                         {error}
                     </p>
                 )}
@@ -207,7 +207,7 @@ export default function NewSubjectPage() {
                     </button>
                     <Link
                         href="/admin/subjects"
-                        className="text-sm font-medium text-gray-600 hover:text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-4 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
                         Cancelar
                     </Link>

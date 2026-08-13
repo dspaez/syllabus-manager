@@ -92,8 +92,8 @@ export default function ProfilePage() {
 
     if (loading) {
         return (
-            <div className="p-8 flex items-center gap-2 text-sm text-gray-400">
-                <span className="h-4 w-4 rounded-full border-2 border-gray-300 border-t-blue-500 animate-spin" />
+            <div className="p-8 flex items-center gap-2 text-sm text-slate-400 dark:text-slate-500">
+                <span className="h-4 w-4 rounded-full border-2 border-slate-300 dark:border-slate-700 border-t-blue-500 animate-spin" />
                 Cargando perfil...
             </div>
         );
@@ -103,8 +103,8 @@ export default function ProfilePage() {
         <div className="p-8 max-w-2xl">
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-2xl font-bold text-gray-900">Perfil del Docente</h1>
-                <p className="text-sm text-gray-500 mt-1">
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Perfil del Docente</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                     Esta información se puede mostrar en la vista pública del sitio.
                 </p>
             </div>
@@ -128,7 +128,7 @@ export default function ProfilePage() {
                         )}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
                             URL de foto de perfil
                         </label>
                         <input
@@ -136,16 +136,16 @@ export default function ProfilePage() {
                             value={form.avatar_url}
                             onChange={(e) => set('avatar_url', e.target.value)}
                             placeholder="https://..."
-                            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                     </div>
                 </div>
 
                 {/* Card */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
                     {/* Full name */}
                     <div className="px-6 py-4">
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
                             Nombre completo <span className="text-red-400">*</span>
                         </label>
                         <input
@@ -154,13 +154,13 @@ export default function ProfilePage() {
                             value={form.name}
                             onChange={(e) => set('name', e.target.value)}
                             placeholder="Ej: Dr. Juan Pérez López"
-                            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                     </div>
 
                     {/* Title / role */}
                     <div className="px-6 py-4">
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
                             Título / Cargo
                         </label>
                         <input
@@ -168,13 +168,13 @@ export default function ProfilePage() {
                             value={form.title}
                             onChange={(e) => set('title', e.target.value)}
                             placeholder="Ej: Docente, Ing. en Sistemas, Dr. en Ciencias"
-                            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                     </div>
 
                     {/* Bio */}
                     <div className="px-6 py-4">
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
                             Biografía
                         </label>
                         <textarea
@@ -182,7 +182,7 @@ export default function ProfilePage() {
                             value={form.bio}
                             onChange={(e) => set('bio', e.target.value)}
                             placeholder="Breve descripción profesional..."
-                            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
                         />
                     </div>
                 </div>
@@ -203,10 +203,10 @@ export default function ProfilePage() {
                     </button>
 
                     {status === 'saved' && (
-                        <span className="text-sm text-emerald-600 font-medium">✓ Cambios guardados</span>
+                        <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">✓ Cambios guardados</span>
                     )}
                     {status === 'error' && (
-                        <span className="text-sm text-red-600 font-medium">
+                        <span className="text-sm text-red-600 dark:text-red-400 font-medium">
                             Error: {errorMsg}
                         </span>
                     )}

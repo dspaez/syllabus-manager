@@ -65,10 +65,10 @@ export default function EditSemesterPage({ params }: { params: Promise<{ id: str
     if (loadingData) {
         return (
             <div className="p-8 max-w-lg">
-                <div className="h-8 w-48 bg-gray-200 animate-pulse rounded mb-6" />
-                <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-5">
+                <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 animate-pulse rounded mb-6" />
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-6 space-y-5">
                     {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-10 bg-gray-100 animate-pulse rounded-lg" />
+                        <div key={i} className="h-10 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg" />
                     ))}
                 </div>
             </div>
@@ -77,12 +77,12 @@ export default function EditSemesterPage({ params }: { params: Promise<{ id: str
 
     return (
         <div className="p-8 max-w-lg">
-            <h1 className="text-2xl font-semibold text-gray-800 mb-6">Editar semestre</h1>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-6">Editar semestre</h1>
 
-            <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-5">
+            <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-6 space-y-5">
                 {/* Nombre */}
                 <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         Nombre <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -92,14 +92,14 @@ export default function EditSemesterPage({ params }: { params: Promise<{ id: str
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Ej. 2024-B"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
 
                 {/* Fechas */}
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label htmlFor="start_date" className="block text-sm font-medium text-gray-700 mb-1">
+                        <label htmlFor="start_date" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                             Fecha inicio
                         </label>
                         <input
@@ -107,11 +107,11 @@ export default function EditSemesterPage({ params }: { params: Promise<{ id: str
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
                     <div>
-                        <label htmlFor="end_date" className="block text-sm font-medium text-gray-700 mb-1">
+                        <label htmlFor="end_date" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                             Fecha fin
                         </label>
                         <input
@@ -119,7 +119,7 @@ export default function EditSemesterPage({ params }: { params: Promise<{ id: str
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
                 </div>
@@ -131,16 +131,16 @@ export default function EditSemesterPage({ params }: { params: Promise<{ id: str
                         type="checkbox"
                         checked={isActive}
                         onChange={(e) => setIsActive(e.target.checked)}
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 dark:bg-slate-800 text-blue-600 focus:ring-blue-500"
                     />
-                    <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
+                    <label htmlFor="is_active" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                         Semestre activo
                     </label>
                 </div>
 
                 {/* Error */}
                 {error && (
-                    <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-900/50 rounded-lg px-3 py-2">
                         {error}
                     </p>
                 )}
@@ -156,7 +156,7 @@ export default function EditSemesterPage({ params }: { params: Promise<{ id: str
                     </button>
                     <Link
                         href="/admin/semesters"
-                        className="text-sm font-medium text-gray-600 hover:text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 px-4 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
                         Cancelar
                     </Link>
