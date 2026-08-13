@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-12T00:00:00.000Z",
+  "title": "Design System: Syllabus Manager",
+  "extensions": {
+    "colorMeta": {
+      "chalkboard-blue": { "role": "primary", "displayName": "Chalkboard Blue", "canonical": "#2563eb", "tonalRamp": ["#eff6ff", "#dbeafe", "#bfdbfe", "#93c5fd", "#60a5fa", "#3b82f6", "#2563eb", "#1d4ed8", "#1e40af"] },
+      "marker-violet": { "role": "secondary", "displayName": "Marker Violet", "canonical": "#7c3aed", "tonalRamp": ["#f5f3ff", "#ede9fe", "#ddd6fe", "#c4b5fd", "#a78bfa", "#8b5cf6", "#7c3aed", "#6d28d9", "#5b21b6"] },
+      "presente-green": { "role": "status-success", "displayName": "Presente Green", "canonical": "#059669", "tonalRamp": ["#ecfdf5", "#d1fae5", "#a7f3d0", "#6ee7b7", "#34d399", "#10b981", "#059669", "#047857", "#065f46"] },
+      "correction-red": { "role": "status-danger", "displayName": "Correction Red", "canonical": "#dc2626", "tonalRamp": ["#fef2f2", "#fee2e2", "#fecaca", "#fca5a5", "#f87171", "#ef4444", "#dc2626", "#b91c1c", "#991b1b"] },
+      "overview-bg": { "role": "neutral", "displayName": "Notebook Paper", "canonical": "#f8fafc", "tonalRamp": ["#f8fafc", "#f1f5f9", "#e2e8f0", "#cbd5e1", "#94a3b8", "#64748b", "#475569", "#334155", "#1e293b", "#0f172a", "#020617"] },
+      "task-text": { "role": "neutral-legacy", "displayName": "Task Ink", "canonical": "#374151", "tonalRamp": ["#f9fafb", "#f3f4f6", "#e5e7eb", "#d1d5db", "#9ca3af", "#6b7280", "#4b5563", "#374151", "#1f2937", "#111827"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Valores numéricos de métricas del dashboard (font-black, 4xl)." },
+      "headline": { "displayName": "Headline", "purpose": "Encabezados de bienvenida y de sección en la capa panorama." },
+      "title": { "displayName": "Title", "purpose": "Nombre de materia / título de tarjeta." },
+      "body": { "displayName": "Body", "purpose": "Texto de párrafo, descripciones, campos de formulario." },
+      "label": { "displayName": "Label", "purpose": "Eyebrows y labels de sección en mayúsculas trackeadas." }
+    },
+    "shadows": [
+      { "name": "resting-lift", "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)", "purpose": "Sombra de reposo confirmada para tarjetas de panorama (reemplaza shadow-sm)." },
+      { "name": "hover-lift", "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)", "purpose": "Sombra de hover para tarjetas de panorama, junto con -translate-y-0.5." },
+      { "name": "cta-glow", "value": "0 4px 6px -1px rgb(37 99 235 / 0.2)", "purpose": "Sombra coloreada exclusiva de los botones CTA con degradado azul→violeta." }
+    ],
+    "motion": [
+      { "name": "hover-lift-transition", "value": "all 200ms ease", "purpose": "Transición estándar de sombra + translate en tarjetas y botones al hover." },
+      { "name": "nav-nudge", "value": "transform 200ms ease", "purpose": "Desplazamiento de 2px (translate-x-0.5) en ítems de nav inactivos al hover." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary CTA Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Botón de acción principal en la capa panorama (ej. \"+ Asignatura\"): degradado azul→violeta con sombra de color.",
+      "html": "<button class=\"ds-btn-cta\">+ Asignatura</button>",
+      "css": ".ds-btn-cta { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(to right, #1d4ed8, #6d28d9); color: #ffffff; font-size: 12px; font-weight: 600; padding: 8px 14px; border-radius: 12px; border: none; box-shadow: 0 4px 6px -1px rgb(37 99 235 / 0.2); transition: box-shadow 200ms ease; cursor: pointer; } .ds-btn-cta:hover { box-shadow: 0 10px 15px -3px rgb(37 99 235 / 0.25); } .ds-btn-cta:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }"
+    },
+    {
+      "name": "Flat Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Botón primario de la capa tarea (formularios de alta/edición): azul sólido, sin degradado.",
+      "html": "<button class=\"ds-btn-flat\">Guardar</button>",
+      "css": ".ds-btn-flat { background: #2563eb; color: #ffffff; font-size: 14px; font-weight: 500; padding: 8px 16px; border-radius: 8px; border: none; transition: background 200ms ease; cursor: pointer; } .ds-btn-flat:hover { background: #1d4ed8; } .ds-btn-flat:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; } .ds-btn-flat:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Metric Card",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "Tarjeta de métrica del dashboard: ícono en chip de color, valor grande en font-black, sombra de reposo visible.",
+      "html": "<a class=\"ds-card-metric\" href=\"#\"><div class=\"ds-card-metric-icon\">🎓</div><p class=\"ds-card-metric-value\">12</p><p class=\"ds-card-metric-label\">Semestres</p><p class=\"ds-card-metric-sub\">Períodos registrados</p></a>",
+      "css": ".ds-card-metric { display: block; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); text-decoration: none; transition: all 200ms ease; } .ds-card-metric:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); } .ds-card-metric-icon { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: #eff6ff; color: #2563eb; font-size: 20px; margin-bottom: 16px; } .ds-card-metric-value { font-size: 36px; font-weight: 900; letter-spacing: -0.02em; color: #0f172a; margin: 0; } .ds-card-metric-label { font-size: 14px; font-weight: 700; color: #334155; margin: 2px 0 0; } .ds-card-metric-sub { font-size: 12px; color: #94a3b8; margin: 2px 0 0; }"
+    },
+    {
+      "name": "Subject Card",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "Tarjeta pública de materia: emoji por palabra clave, barra de color de acento libre, badges de tipo de material fijas por color.",
+      "html": "<a class=\"ds-card-subject\" href=\"#\"><div class=\"ds-card-subject-head\"><span class=\"ds-card-subject-emoji\">🐍</span><div><p class=\"ds-card-subject-name\">Programación en Python</p><p class=\"ds-card-subject-desc\">Introducción a estructuras de datos</p></div><span class=\"ds-card-subject-bar\"></span></div><div class=\"ds-card-subject-body\"><span class=\"ds-badge ds-badge-pdf\">PDF</span><span class=\"ds-badge ds-badge-pptx\">PPTX</span></div></a>",
+      "css": ".ds-card-subject { display: block; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; text-decoration: none; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1); transition: all 200ms ease; } .ds-card-subject:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); } .ds-card-subject-head { display: flex; align-items: flex-start; gap: 16px; padding: 20px; border-bottom: 1px solid #f1f5f9; } .ds-card-subject-emoji { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; background: #7c3aed18; font-size: 24px; flex-shrink: 0; } .ds-card-subject-name { font-size: 16px; font-weight: 700; color: #0f172a; margin: 0; } .ds-card-subject-desc { font-size: 12px; color: #64748b; margin: 4px 0 0; } .ds-card-subject-bar { width: 4px; height: 48px; border-radius: 9999px; background: #7c3aed; flex-shrink: 0; margin-left: auto; } .ds-card-subject-body { padding: 20px; display: flex; gap: 6px; flex-wrap: wrap; }"
+    },
+    {
+      "name": "Material Type Badge",
+      "kind": "chip",
+      "refersTo": "badge-pill",
+      "description": "Pastilla de tipo de material — color fijo por tipo (The Material Badge Rule), nunca por materia.",
+      "html": "<span class=\"ds-badge ds-badge-pdf\">PDF</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 600; padding: 4px 10px; border-radius: 9999px; border: 1px solid transparent; } .ds-badge-doc { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; } .ds-badge-pptx { background: #f5f3ff; color: #6d28d9; border-color: #ddd6fe; } .ds-badge-pdf { background: #fef2f2; color: #b91c1c; border-color: #fecaca; } .ds-badge-video { background: #fff7ed; color: #c2410c; border-color: #fed7aa; } .ds-badge-ai { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "button-ghost",
+      "description": "Ítem de navegación del sidebar de admin — barra vertical de 4px indica el activo, nudge de 2px al hover.",
+      "html": "<a class=\"ds-nav-item ds-nav-item-active\">📚 Asignaturas</a>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 16px; font-size: 14px; font-weight: 500; color: #475569; text-decoration: none; position: relative; transition: transform 200ms ease, background 200ms ease, color 200ms ease; } .ds-nav-item:hover { background: #f1f5f9; color: #0f172a; transform: translateX(2px); } .ds-nav-item-active { background: #eff6ff; color: #1d4ed8; box-shadow: 0 1px 2px 0 rgb(37 99 235 / 0.08); } .ds-nav-item-active::before { content: \"\"; position: absolute; left: -16px; top: 10px; bottom: 10px; width: 4px; background: #3b82f6; border-radius: 0 4px 4px 0; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "button-ghost",
+      "description": "Campo de texto de la capa tarea — foco marcado solo con anillo azul, sin cambio de borde.",
+      "html": "<input class=\"ds-input\" placeholder=\"Ej. Cálculo diferencial\" />",
+      "css": ".ds-input { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: #111827; background: #ffffff; outline: none; transition: box-shadow 150ms ease; } .ds-input::placeholder { color: #9ca3af; } .ds-input:focus { box-shadow: 0 0 0 2px #3b82f6; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El Cuaderno del Docente Digital",
+    "overview": "Syllabus Manager es el cuaderno de planificación de un solo docente, llevado en la pantalla en vez del papel: cálido y personal en la superficie de panorama (dashboard, tarjetas de materia), pero sin sacrificar nunca la densidad de información que un docente necesita para gestionar un semestre completo de un vistazo. No es un SaaS corporativo genérico — es una herramienta de trabajo diario que se permite un emoji por materia, un degradado suave en el header, y números en negrita extrema para los conteos que importan. El sistema convive hoy en dos capas visuales igualmente válidas, no en conflicto: una capa de panorama (dashboard, layout de admin, tarjetas públicas) más expresiva, y una capa de tarea (formularios de alta/edición) más utilitaria.",
+    "keyCharacteristics": [
+      "Cálido pero eficiente: personalidad sin perder densidad de datos.",
+      "Dos capas de neutros conviviendo a propósito: slate (panorama) y gray (tarea).",
+      "Emoji por materia como sistema de iconografía humano, no un set de íconos custom.",
+      "Color de acento por materia es libre; azul/violeta son solo el acento por defecto del producto.",
+      "Tipografía suave y redondeada por defecto, nunca angulosa."
+    ],
+    "rules": [
+      { "name": "The Material Badge Rule", "body": "El color de una badge de tipo de material está fijado por tipo, nunca por el color de la materia que lo contiene.", "section": "colors" },
+      { "name": "The Black Weight Rule", "body": "Los números y encabezados de la capa panorama usan font-black (900); la capa tarea se queda en font-semibold/font-medium.", "section": "typography" },
+      { "name": "The Always-Lifted Rule", "body": "Las tarjetas de la capa panorama nunca están completamente planas en reposo; la sombra crece al hover pero nunca parte de cero.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar slate para cualquier superficie nueva de tipo panorama y mantener gray como válido en formularios existentes de la capa tarea.",
+      "Do dar a las tarjetas de panorama una sombra visible en reposo (Resting Lift), no solo al hover.",
+      "Do mantener el color de badge de tipo de material fijo sin importar el color de la materia contenedora.",
+      "Do usar font-black para números y encabezados de panorama; reservar font-semibold/font-medium para la capa tarea.",
+      "Do seguir usando emoji por materia como iconografía."
+    ],
+    "donts": [
+      "Don't mezclar slate-* y gray-* dentro de un mismo componente.",
+      "Don't dejar que el color de acento de una materia pise los colores fijos de las badges de tipo de material.",
+      "Don't asumir que Geist está renderizando sin verificar — globals.css hoy fuerza Arial/Helvetica en body.",
+      "Don't usar esquinas rectas en ningún componente nuevo.",
+      "Don't tratar azul/violeta como una decisión de identidad irrevocable."
+    ]
+  }
+}

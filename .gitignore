@@ -36,6 +36,14 @@ yarn-error.log*
 # vercel
 .vercel
 
+# codex
+.codex/
+
+# impeccable — local/session-only state (design.json sidecar IS tracked)
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+.impeccable/live/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
