@@ -9,6 +9,7 @@ interface Exercise {
     titulo: string;
     contexto: string;
     requerimientos: string[];
+    conceptos?: string[];
     solucionDocente: string;
 }
 
@@ -35,9 +36,11 @@ interface Props {
     weekId: string;
     subjectId: string;
     unitId: string;
+    subjectName: string;
     weekTopic: string;
     techStack?: string | null;
     courseMode?: string | null;
+    accentColor?: string | null;
     /** 'project': technical_document_snapshot más reciente hasta esta semana (no necesariamente
      *  el propio — cae al más reciente disponible si esta semana todavía no tiene uno). */
     exerciseProjectContext?: string | null;
@@ -130,7 +133,7 @@ function ResultView({ type, result }: { type: GenerateType; result: GenerateResu
     return <GuideView data={result as GuideResult} />;
 }
 
-export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMode, exerciseProjectContext, exercisePreviousTitles }: Props) {
+export default function GenerateWithAI({ weekId, subjectName, weekTopic, techStack, courseMode, accentColor, exerciseProjectContext, exercisePreviousTitles }: Props) {
     const [open, setOpen] = useState(false);
     const [type, setType] = useState<GenerateType>('exercises');
     const [topic, setTopic] = useState(weekTopic);
@@ -139,6 +142,7 @@ export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMod
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [savedFileUrl, setSavedFileUrl] = useState<string | null>(null);
 
     function handleOpen() {
         setOpen(true);
@@ -146,6 +150,7 @@ export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMod
         setResult(null);
         setError(null);
         setSaved(false);
+        setSavedFileUrl(null);
     }
 
     function handleClose() {
@@ -153,6 +158,7 @@ export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMod
         setResult(null);
         setError(null);
         setSaved(false);
+        setSavedFileUrl(null);
     }
 
     async function handleGenerate() {
@@ -161,6 +167,7 @@ export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMod
         setError(null);
         setResult(null);
         setSaved(false);
+        setSavedFileUrl(null);
 
         try {
             const res = await fetch('/api/generate', {
@@ -195,25 +202,55 @@ export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMod
     async function handleSave() {
         if (!result) return;
         setSaving(true);
+        setError(null);
 
         try {
             const supabase = createClient();
-            
+
             // Generate concise name with prefix
             const prefix = type === 'exercises' ? 'Ejercicios' : 'Guía';
             const truncatedTopic = topic.trim().substring(0, 50);
             const materialName = `${prefix}: ${truncatedTopic}`;
 
+            // Para "exercises" también generamos un PDF real del enunciado (sin solucionDocente)
+            // para que el docente pueda descargarlo/imprimirlo — `description` se guarda igual con
+            // el JSON completo (con solución) porque el resto del sistema lo sigue usando como
+            // contexto real (Class Kit, próxima semana, próximos ejercicios).
+            let fileUrl: string | undefined;
+            if (type === 'exercises') {
+                const { ejercicioClase, ejerciciosTarea } = result as ExercisesResult;
+                const res = await fetch('/api/render-exercise-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ejercicioClase,
+                        ejerciciosTarea,
+                        weekId,
+                        subjectName,
+                        weekTopic: topic.trim(),
+                        accentColor: accentColor ?? undefined,
+                    }),
+                });
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error ?? 'Error al generar el PDF del enunciado');
+                }
+                const data = await res.json() as { url: string };
+                fileUrl = data.url;
+            }
+
             const { error: dbError } = await supabase.from('materials').insert({
                 name: materialName,
-                type: 'doc',
+                type: fileUrl ? 'pdf' : 'doc',
                 description: JSON.stringify(result),
+                file_url: fileUrl ?? null,
                 is_published: false,
                 week_id: weekId,
                 source: 'ai',
             });
 
             if (dbError) throw dbError;
+            setSavedFileUrl(fileUrl ?? null);
             setSaved(true);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Error al guardar');
@@ -256,7 +293,7 @@ export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMod
                                 <label className="text-sm font-medium text-gray-700">Tipo de contenido</label>
                                 <select
                                     value={type}
-                                    onChange={(e) => { setType(e.target.value as GenerateType); setResult(null); setSaved(false); }}
+                                    onChange={(e) => { setType(e.target.value as GenerateType); setResult(null); setSaved(false); setSavedFileUrl(null); }}
                                     className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
                                 >
                                     {(Object.entries(TYPE_LABELS) as [GenerateType, string][]).map(([val, label]) => (
@@ -327,8 +364,18 @@ export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMod
                                 </div>
 
                                 {saved ? (
-                                    <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 border border-green-200 text-center">
+                                    <p className="flex flex-wrap items-center justify-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 border border-green-200 text-center">
                                         ✓ Material guardado correctamente
+                                        {savedFileUrl && (
+                                            <a
+                                                href={savedFileUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="font-semibold underline"
+                                            >
+                                                Ver PDF del enunciado →
+                                            </a>
+                                        )}
                                     </p>
                                 ) : (
                                     <button
@@ -342,7 +389,7 @@ export default function GenerateWithAI({ weekId, weekTopic, techStack, courseMod
                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                                 </svg>
-                                                Guardando...
+                                                {type === 'exercises' ? 'Generando PDF y guardando...' : 'Guardando...'}
                                             </>
                                         ) : (
                                             'Guardar como material'

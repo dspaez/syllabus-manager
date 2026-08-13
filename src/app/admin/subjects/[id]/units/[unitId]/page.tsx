@@ -294,8 +294,11 @@ export default async function UnitPage({
             .slice(0, idx)
             .filter((w) => w.dictada)
             .slice(-4)
-            .map((w) => w.title)
-            .filter((t): t is string => Boolean(t));
+            .filter((w) => w.title)
+            .map((w) => {
+                const concepts = exerciseConceptsFor(w);
+                return concepts.length > 0 ? `${w.title} — conceptos ya practicados: ${concepts.join(', ')}` : w.title as string;
+            });
     }
 
     const totalMaterials = (weeks ?? []).reduce(
@@ -433,9 +436,11 @@ export default async function UnitPage({
                                             weekId={week.id}
                                             subjectId={id}
                                             unitId={unitId}
+                                            subjectName={s?.name ?? ''}
                                             weekTopic={[week.title ?? `Semana ${week.number}`, week.description].filter(Boolean).join(' — ')}
                                             techStack={s?.tech_stack ?? null}
                                             courseMode={s?.course_mode ?? null}
+                                            accentColor={s?.accent_color ?? null}
                                             exerciseProjectContext={exerciseProjectContextFor(week)}
                                             exercisePreviousTitles={exercisePreviousTitlesFor(week)}
                                         />
