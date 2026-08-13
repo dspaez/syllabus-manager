@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { SlidesOnlySchema, GuionDocenteSchema, GuiaTecnicaSchema, ExtraSlidesSchema, ICON_NAMES, type ClassKitContent, type ExtraSlideEntry } from '@/lib/classKit/schema';
+import { SlidesOnlySchema, GuionDocenteSchema, GuiaTecnicaSchema, ExtraSlidesSchema, ICON_NAMES, type ClassKitContent, type ExtraSlideEntry, type Slide } from '@/lib/classKit/schema';
 import { ExamSchema, type Exam } from '@/lib/exam/schema';
 
 const techStackContext = (techStack?: string) =>
@@ -446,9 +446,14 @@ async function generateClassKit(
     const slidesContentSuffix = slidesContentBlock(exerciseContext);
 
     async function callClaude<T>(label: string, system: string, userPrompt: string, schema: Parameters<typeof zodOutputFormat>[0]): Promise<T> {
+        // Extended thinking solo en "slides" — probado con una llamada real: ~7% más tokens de
+        // salida (fracción de centavo) y ~3s más de latencia, sin riesgo real de costo/timeout.
+        // No se activó en "extraSlides" (ya es barata) ni en "docs" (la más pesada, sin medir
+        // todavía su impacto real de costo/latencia ahí).
         const stream = anthropic.messages.stream({
             model: 'claude-sonnet-5',
             max_tokens: CLASS_KIT_MAX_TOKENS,
+            ...(label === 'slides' ? { thinking: { type: 'adaptive' as const } } : {}),
             system,
             messages: [{ role: 'user', content: userPrompt }],
             output_config: { format: zodOutputFormat(schema) },
@@ -515,6 +520,75 @@ async function generateClassKit(
     );
 
     return { slides, ...docs };
+}
+
+// Layouts "core" del discriminated union principal — ver nota en schema.ts. tabla/pasos NO
+// pueden pasar por esta llamada (mismo límite de "compiled grammar" que obligó a separarlos
+// en su propia llamada al generar) — si el deck actual tiene alguna, queda AFUERA del ajuste
+// y se reinserta intacta en su posición original después.
+const CORE_LAYOUTS = new Set(['portada', 'bullets', 'codigo', 'comparacion', 'analogia', 'mapeoIconos', 'problemaAlertas']);
+
+const ADJUST_SLIDES_SYSTEM_PROMPT =
+    `Ya existe un set de slides de una clase (te lo paso completo en JSON). El docente pidió un ` +
+    `ajuste puntual — aplicalo y devolvé el array COMPLETO de slides actualizado.\n\n` +
+    `Reglas estrictas:\n` +
+    `- Mantené EXACTAMENTE la misma cantidad de slides, el mismo layout de cada una y el mismo ` +
+    `ORDEN — el ajuste es sobre el CONTENIDO (texto, ejemplos, código, redacción), nunca sobre la ` +
+    `estructura. Si el pedido implicara agregar o quitar una slide, hacé el mejor ajuste posible ` +
+    `DENTRO de las slides existentes en su lugar, sin cambiar cuántas hay.\n` +
+    `- No toques ninguna slide que el pedido no mencione ni afecte — copiala EXACTAMENTE tal cual ` +
+    `viene, sin reescribirla "de paso".\n` +
+    `- Aplicá el pedido de forma completa y real, no superficial ni a medias.`;
+
+// "Pedile un ajuste a la IA" en vez de regenerar todo de cero — la respuesta a que acá no hay
+// forma de decirle a Claude "revisá esto de nuevo" como en una conversación normal. Solo opera
+// sobre las slides "core" (ver CORE_LAYOUTS); si el ajuste no toca esas, no hay nada que hacer.
+async function adjustSlides(allSlides: ClassKitContent['slides'], instruction: string): Promise<ClassKitContent['slides']> {
+    const coreEntries = allSlides
+        .map((slide, index) => ({ slide, index }))
+        .filter((e): e is { slide: Slide; index: number } => CORE_LAYOUTS.has(e.slide.layout));
+
+    if (coreEntries.length === 0) {
+        throw new Error('Este set de slides no tiene ninguna slide ajustable con este mecanismo.');
+    }
+
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const stream = anthropic.messages.stream({
+        model: 'claude-sonnet-5',
+        max_tokens: CLASS_KIT_MAX_TOKENS,
+        thinking: { type: 'adaptive' },
+        system: ADJUST_SLIDES_SYSTEM_PROMPT,
+        messages: [{
+            role: 'user',
+            content: `Slides actuales (JSON):\n${JSON.stringify(coreEntries.map((e) => e.slide))}\n\nAjuste pedido: ${instruction}`,
+        }],
+        output_config: { format: zodOutputFormat(SlidesOnlySchema) },
+    });
+
+    let message;
+    try {
+        message = await stream.finalMessage();
+    } catch (err) {
+        const raw = stream.receivedMessages.at(-1);
+        console.error(
+            `[generate:adjust_slides] parseo falló — stop_reason=${raw?.stop_reason}, usage=${JSON.stringify(raw?.usage)}`,
+        );
+        throw err;
+    }
+    if (message.stop_reason === 'refusal') {
+        throw new Error('El modelo rechazó la solicitud');
+    }
+    if (!message.parsed_output) {
+        throw new Error('No se pudo parsear el ajuste de slides');
+    }
+    const updatedCore = (message.parsed_output as { slides: Slide[] }).slides;
+    if (updatedCore.length !== coreEntries.length) {
+        throw new Error('El ajuste cambió la cantidad de slides — probá con una instrucción más puntual.');
+    }
+
+    const result = [...allSlides];
+    coreEntries.forEach((entry, i) => { result[entry.index] = updatedCore[i]; });
+    return result;
 }
 
 interface RecentWeekSummary {
@@ -732,7 +806,7 @@ export async function POST(request: NextRequest) {
             subjectDescription, courseMode, technicalDocument, recentWeeks,
             exerciseProjectContext, exercisePreviousTitles,
             unitAName, unitADescription, unitAWeekTitles, unitBName, unitBDescription,
-            numVersiones,
+            numVersiones, slides, instruction,
         } = await request.json() as {
             type: string;
             topic?: string;
@@ -757,7 +831,17 @@ export async function POST(request: NextRequest) {
             unitBName?: string;
             unitBDescription?: string;
             numVersiones?: number;
+            slides?: ClassKitContent['slides'];
+            instruction?: string;
         };
+
+        if (type === 'adjust_slides') {
+            if (!slides || !slides.length || !instruction?.trim()) {
+                return NextResponse.json({ error: 'Missing required fields: slides and instruction' }, { status: 400 });
+            }
+            const updatedSlides = await adjustSlides(slides, instruction.trim());
+            return NextResponse.json({ slides: updatedSlides });
+        }
 
         if (type === 'exam') {
             if (!subjectName || !weekTopic || !numVersiones) {

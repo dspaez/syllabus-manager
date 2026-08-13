@@ -43,6 +43,9 @@ export default function GenerateClassKit({
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
 
+    const [adjustInstruction, setAdjustInstruction] = useState('');
+    const [adjusting, setAdjusting] = useState(false);
+
     function reset() {
         setStage('form');
         setTopic(weekTopic);
@@ -55,6 +58,7 @@ export default function GenerateClassKit({
         setContentDraft('');
         setFiles(null);
         setSaved(false);
+        setAdjustInstruction('');
     }
 
     function handleOpen() {
@@ -104,6 +108,48 @@ export default function GenerateClassKit({
             setError(err instanceof Error ? err.message : 'Error desconocido');
         } finally {
             setLoading(false);
+        }
+    }
+
+    // Ajuste puntual sobre las slides ya generadas, en vez de regenerar todo de cero — la IA
+    // relee el set actual y aplica SOLO el cambio pedido, preservando el resto tal cual.
+    async function handleAdjust() {
+        if (!adjustInstruction.trim()) return;
+        let parsedContent: ClassKitContent;
+        try {
+            parsedContent = JSON.parse(contentDraft);
+        } catch {
+            setError('El JSON editado no es válido — revisa la sintaxis antes de pedir un ajuste.');
+            return;
+        }
+
+        setAdjusting(true);
+        setError(null);
+
+        try {
+            const res = await fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'adjust_slides',
+                    slides: parsedContent.slides,
+                    instruction: adjustInstruction.trim(),
+                }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error ?? 'Error al aplicar el ajuste');
+            }
+
+            const data = await res.json() as { slides: ClassKitContent['slides'] };
+            parsedContent.slides = data.slides;
+            setContentDraft(JSON.stringify(parsedContent, null, 2));
+            setAdjustInstruction('');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Error desconocido');
+        } finally {
+            setAdjusting(false);
         }
     }
 
@@ -311,6 +357,31 @@ export default function GenerateClassKit({
                         {/* Stage 2: review/edit JSON content before rendering files */}
                         {stage === 'content' && (
                             <div className="flex flex-col gap-3">
+                                <div className="flex flex-col gap-1.5 rounded-lg border border-violet-200 bg-violet-50 p-3">
+                                    <label className="text-sm font-medium text-violet-900">
+                                        ¿Querés que la IA ajuste algo puntual? (ej. &quot;hacé la slide 3 más simple&quot;)
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={adjustInstruction}
+                                            onChange={(e) => setAdjustInstruction(e.target.value)}
+                                            placeholder="Describe el ajuste..."
+                                            className="flex-1 rounded-lg border border-violet-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                        />
+                                        <button
+                                            onClick={handleAdjust}
+                                            disabled={adjusting || !adjustInstruction.trim()}
+                                            className="shrink-0 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            {adjusting ? 'Aplicando...' : 'Aplicar ajuste'}
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-violet-700">
+                                        Relee las slides ya generadas y aplica solo lo pedido, sin tocar el resto — no agrega ni quita slides.
+                                    </p>
+                                </div>
+
                                 <div className="flex flex-col gap-1">
                                     <label className="text-sm font-medium text-gray-700">
                                         Revisa y edita el contenido antes de generar los archivos
