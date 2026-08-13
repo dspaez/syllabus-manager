@@ -9,6 +9,19 @@ interface Props {
     subjectName: string;
 }
 
+function ChevronIcon({ isOpen }: { isOpen: boolean }) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className={`size-3.5 shrink-0 text-gray-400 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`}
+        >
+            <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+        </svg>
+    );
+}
+
 type Modality = 'presencial' | 'semipresencial' | 'linea';
 
 const MODALITY_LABELS: Record<Modality, string> = {
@@ -297,9 +310,12 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
                                                             <span className="text-sm font-semibold text-gray-800">{unit.name}</span>
                                                             <span className="text-xs text-gray-400">{unit.weeks.length} semanas</span>
                                                         </div>
-                                                        <span className="text-gray-400 text-xs">{isOpen ? '▲' : '▼'}</span>
+                                                        <ChevronIcon isOpen={isOpen} />
                                                     </button>
-                                                    {isOpen && (
+                                                    <div
+                                                        className="overflow-hidden transition-all duration-200 motion-reduce:transition-none"
+                                                        style={{ maxHeight: isOpen ? '2000px' : '0px' }}
+                                                    >
                                                         <div className="divide-y divide-gray-50">
                                                             {unit.weeks.map((week) => (
                                                                 <div key={week.number} className="px-4 py-3">
@@ -329,7 +345,7 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
                                                                 </div>
                                                             ))}
                                                         </div>
-                                                    )}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
