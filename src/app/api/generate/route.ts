@@ -4,6 +4,7 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { SlidesOnlySchema, GuionDocenteSchema, GuiaTecnicaSchema, ExtraSlidesSchema, ICON_NAMES, type ClassKitContent, type ExtraSlideEntry } from '@/lib/classKit/schema';
+import { ExamSchema, type Exam } from '@/lib/exam/schema';
 
 const techStackContext = (techStack?: string) =>
     techStack?.trim()
@@ -642,6 +643,86 @@ async function generateSuggestNextWeek(params: {
     return message.parsed_output as { title: string; description: string; unit: 'current' | 'next' };
 }
 
+// Examen con N versiones paralelas — pensado para tomar en clase, cada estudiante/fila
+// recibe una versión distinta pero de dificultad y alcance técnico IDÉNTICOS (evita copia
+// sin volver el examen más fácil o difícil entre versiones). No es un array-of-union como
+// los layouts de Class Kit (ver nota junto a ExtraSlidesSchema) — es un array de UN solo
+// shape repetido N veces, mucho más barato para el compilador de structured outputs, así
+// que no hay riesgo del límite "compiled grammar is too large" acá.
+const EXAM_SYSTEM_PROMPT =
+    `Sos un docente universitario diseñando una evaluación práctica con MÚLTIPLES VERSIONES ` +
+    `paralelas para tomar en clase — cada estudiante o fila recibe una versión distinta pero ` +
+    `de dificultad y estructura IDÉNTICA entre sí, para evitar copia sin volver el examen más ` +
+    `fácil o difícil según la versión.\n\n` +
+    `Reglas estrictas:\n` +
+    `- TODAS las versiones deben tener EXACTAMENTE la misma estructura: mismo número de ` +
+    `requisitos, mismo nivel de dificultad, mismos conceptos técnicos evaluados (ej. si una ` +
+    `versión pide manejar InputMismatchException e IndexOutOfBoundsException con finally, ` +
+    `TODAS las versiones piden exactamente esas mismas excepciones) — solo cambia el dominio ` +
+    `de negocio (nombres de clase, atributos, mensajes) entre versiones, nunca la dificultad ` +
+    `ni el alcance técnico.\n` +
+    `- Cada versión necesita un dominio de negocio distinto y realista (ej. consultorio, ` +
+    `taller, tienda, servicio técnico, salón) — nunca el mismo dominio en dos versiones, y ` +
+    `nunca un dominio genérico tipo "Sistema X".\n` +
+    `- menu: texto EXACTO tal como se muestra en consola, mismas opciones en todas las ` +
+    `versiones (solo cambia el nombre del dominio en el título del menú).\n` +
+    `- requisitos: instrucciones paso a paso, concretas y evaluables — nombres exactos de ` +
+    `clases/métodos/mensajes de error tal como debe imprimirlos el programa, nunca ` +
+    `descripciones vagas tipo "maneje los errores".\n` +
+    `- instrucciones: reglas generales del examen (herramientas permitidas, qué entregar, que ` +
+    `el programa no debe cerrarse abruptamente ante una entrada inválida) — NUNCA menciones ` +
+    `tiempo estimado ni puntaje ahí, esos los define el docente aparte.\n` +
+    `- Si te paso contexto real de semanas/ejercicios anteriores, el examen tiene que evaluar ` +
+    `contenido YA visto en clase — no un tema que todavía no se dictó.`;
+
+async function generateExam(params: {
+    subjectName: string;
+    subjectDescription?: string;
+    weekTopic: string;
+    techStack?: string;
+    numVersiones: number;
+    exercisePreviousTitles?: string[];
+}): Promise<Exam> {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const parts: string[] = [
+        `Materia: ${params.subjectName}.`,
+        `Tema a evaluar: ${params.weekTopic}.`,
+        `Generá EXACTAMENTE ${params.numVersiones} versiones paralelas (campo "version": "A", "B", "C", ...).`,
+    ];
+    if (params.subjectDescription?.trim()) parts.push(`Descripción de la materia: ${params.subjectDescription.trim()}.`);
+    if (params.techStack?.trim()) parts.push(`Stack tecnológico: ${params.techStack.trim()}.`);
+    if (params.exercisePreviousTitles && params.exercisePreviousTitles.length > 0) {
+        parts.push(`Temas ya dictados en semanas anteriores (el examen debe evaluar contenido de esta lista o del tema indicado, nunca algo no visto): ${params.exercisePreviousTitles.join(', ')}.`);
+    }
+
+    const stream = anthropic.messages.stream({
+        model: 'claude-sonnet-5',
+        max_tokens: CLASS_KIT_MAX_TOKENS,
+        system: EXAM_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: parts.join('\n\n') }],
+        output_config: { format: zodOutputFormat(ExamSchema) },
+    });
+
+    let message;
+    try {
+        message = await stream.finalMessage();
+    } catch (err) {
+        const raw = stream.receivedMessages.at(-1);
+        console.error(
+            `[generate:exam] parseo falló — stop_reason=${raw?.stop_reason}, usage=${JSON.stringify(raw?.usage)}`,
+        );
+        throw err;
+    }
+    if (message.stop_reason === 'refusal') {
+        throw new Error('El modelo rechazó la solicitud');
+    }
+    if (!message.parsed_output) {
+        throw new Error('No se pudo parsear el examen');
+    }
+    return message.parsed_output as Exam;
+}
+
 export async function POST(request: NextRequest) {
     try {
         const {
@@ -651,6 +732,7 @@ export async function POST(request: NextRequest) {
             subjectDescription, courseMode, technicalDocument, recentWeeks,
             exerciseProjectContext, exercisePreviousTitles,
             unitAName, unitADescription, unitAWeekTitles, unitBName, unitBDescription,
+            numVersiones,
         } = await request.json() as {
             type: string;
             topic?: string;
@@ -674,7 +756,26 @@ export async function POST(request: NextRequest) {
             unitAWeekTitles?: string[];
             unitBName?: string;
             unitBDescription?: string;
+            numVersiones?: number;
         };
+
+        if (type === 'exam') {
+            if (!subjectName || !weekTopic || !numVersiones) {
+                return NextResponse.json({ error: 'Missing required fields: subjectName, weekTopic and numVersiones' }, { status: 400 });
+            }
+            if (numVersiones < 1 || numVersiones > 12) {
+                return NextResponse.json({ error: 'numVersiones debe estar entre 1 y 12' }, { status: 400 });
+            }
+            const exam = await generateExam({
+                subjectName,
+                subjectDescription: subjectDescription?.trim() || undefined,
+                weekTopic,
+                techStack: techStack?.trim() || undefined,
+                numVersiones,
+                exercisePreviousTitles,
+            });
+            return NextResponse.json({ exam });
+        }
 
         if (type === 'suggest_next_week') {
             if (!subjectName || !unitAName) {

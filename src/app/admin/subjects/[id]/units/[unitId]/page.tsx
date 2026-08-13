@@ -10,6 +10,7 @@ import EditMaterialName from '@/components/EditMaterialName';
 import GenerateAllContent from '@/components/GenerateAllContent';
 import GenerateTechnicalDoc from '@/components/GenerateTechnicalDoc';
 import GenerateClassKit from '@/components/GenerateClassKit';
+import GenerateExam from '@/components/GenerateExam';
 import ToggleDictada from '@/components/ToggleDictada';
 import { getMaterialBadge } from '@/lib/materialBadge';
 
@@ -44,6 +45,7 @@ type Unit = {
 type Subject = {
     color: string | null;
     name: string;
+    description: string | null;
     technical_document: string | null;
     technical_document_week_id: string | null;
     course_mode: string | null;
@@ -103,7 +105,7 @@ export default async function UnitPage({
             .select('*, materials(*)')
             .eq('unit_id', unitId)
             .order('number', { ascending: true }),
-        supabase.from('subjects').select('color, name, technical_document, technical_document_week_id, course_mode, tech_stack, accent_color').eq('id', id).single(),
+        supabase.from('subjects').select('color, name, description, technical_document, technical_document_week_id, course_mode, tech_stack, accent_color').eq('id', id).single(),
     ]);
 
     if (unitError || !unit) notFound();
@@ -455,6 +457,15 @@ export default async function UnitPage({
                                             projectContext={s?.course_mode === 'project' ? week.technical_document_snapshot : null}
                                             techStack={s?.tech_stack ?? null}
                                             accentColor={s?.accent_color ?? null}
+                                        />
+                                        <GenerateExam
+                                            weekId={week.id}
+                                            subjectName={s?.name ?? ''}
+                                            subjectDescription={s?.description ?? null}
+                                            weekTopic={[week.title ?? `Semana ${week.number}`, week.description].filter(Boolean).join(' — ')}
+                                            techStack={s?.tech_stack ?? null}
+                                            accentColor={s?.accent_color ?? null}
+                                            exercisePreviousTitles={exercisePreviousTitlesFor(week)}
                                         />
                                         {s?.course_mode === 'project' && (
                                             <GenerateTechnicalDoc
