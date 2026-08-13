@@ -457,11 +457,17 @@ interface RecentWeekSummary {
     title: string | null;
     description: string | null;
     exerciseTitle: string | null;
+    dictada: boolean;
 }
 
 const SuggestNextWeekSchema = z.object({
     title: z.string().describe('Título breve y concreto de la próxima clase, como un título real de plan curricular.'),
     description: z.string().describe('2 a 4 líneas con los subtemas/contenidos concretos de esa clase.'),
+    unit: z.enum(['current', 'next']).describe(
+        'A qué unidad pertenece este tema: "current" si continúa la unidad indicada como A, "next" si ' +
+        'ya corresponde temáticamente a la unidad indicada como B (recién ahí arranca esa unidad). ' +
+        'Si no te paso una unidad B, respondé siempre "current".',
+    ),
 });
 
 const SUGGEST_NEXT_WEEK_SYSTEM_PROMPT =
@@ -477,7 +483,16 @@ const SUGGEST_NEXT_WEEK_SYSTEM_PROMPT =
     `partida razonable según la materia, su descripción y el stack, sin inventar que hay historia previa.\n` +
     `- El título debe ser corto y concreto, como el título de una clase real — no un objetivo genérico.\n` +
     `- La descripción lista subtemas/contenidos concretos de esa clase (mismo estilo que un plan ` +
-    `curricular real), no una explicación de por qué la elegiste.`;
+    `curricular real), no una explicación de por qué la elegiste.\n` +
+    `- Entre las semanas recientes que te paso, cada una está marcada como "ya dictada" o "planificada, ` +
+    `no dictada aún". Las planificadas son títulos que el docente ya cargó por adelantado pero todavía no ` +
+    `dio en clase — tratalas como continuidad temática válida (no repitas su contenido), pero no asumas ` +
+    `que el estudiante ya vio ese material en la práctica.\n` +
+    `- Si te paso información de una unidad B además de la unidad A actual, decidís vos a qué unidad ` +
+    `pertenece el tema que proponés, comparando el tema natural que sigue contra la descripción y los ` +
+    `temas ya cubiertos de cada unidad — nunca por defecto ni por conteo de semanas. Recién cruzás a la ` +
+    `unidad B cuando el tema que corresponde dar a continuación ya es, en contenido real, un tema de esa ` +
+    `unidad — no antes.`;
 
 async function generateSuggestNextWeek(params: {
     subjectName: string;
@@ -486,12 +501,28 @@ async function generateSuggestNextWeek(params: {
     techStack?: string;
     technicalDocument?: string;
     recentWeeks?: RecentWeekSummary[];
-}): Promise<{ title: string; description: string }> {
+    unitAName: string;
+    unitADescription?: string;
+    unitAWeekTitles: string[];
+    unitBName?: string;
+    unitBDescription?: string;
+}): Promise<{ title: string; description: string; unit: 'current' | 'next' }> {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const parts: string[] = [`Materia: ${params.subjectName}.`];
     if (params.subjectDescription?.trim()) parts.push(`Descripción de la materia: ${params.subjectDescription.trim()}.`);
     if (params.techStack?.trim()) parts.push(`Stack tecnológico: ${params.techStack.trim()}.`);
+
+    const unitABits = [`Unidad actual (A): ${params.unitAName}.`];
+    if (params.unitADescription?.trim()) unitABits.push(`Descripción: ${params.unitADescription.trim()}.`);
+    if (params.unitAWeekTitles.length > 0) unitABits.push(`Temas ya cargados en esta unidad: ${params.unitAWeekTitles.join(', ')}.`);
+    parts.push(unitABits.join(' '));
+
+    if (params.unitBName?.trim()) {
+        const unitBBits = [`Próxima unidad (B) del plan, todavía sin empezar: ${params.unitBName.trim()}.`];
+        if (params.unitBDescription?.trim()) unitBBits.push(`Descripción: ${params.unitBDescription.trim()}.`);
+        parts.push(unitBBits.join(' '));
+    }
 
     // Igual que en class_kit: 'topics' y 'project' nunca se mezclan — cada uno manda su propio
     // contexto real, y si no hay ninguno (primera clase) se lo decimos explícitamente en vez de
@@ -501,13 +532,14 @@ async function generateSuggestNextWeek(params: {
     } else if (params.courseMode === 'topics' && params.recentWeeks && params.recentWeeks.length > 0) {
         const recentText = params.recentWeeks
             .map((w, i) => {
-                const bits = [`${i + 1}. ${w.title ?? '(sin título)'}`];
+                const estado = w.dictada ? 'ya dictada' : 'planificada, no dictada aún';
+                const bits = [`${i + 1}. (${estado}) ${w.title ?? '(sin título)'}`];
                 if (w.description) bits.push(`   ${w.description}`);
                 if (w.exerciseTitle) bits.push(`   Ejercicio ya dado: ${w.exerciseTitle}`);
                 return bits.join('\n');
             })
             .join('\n');
-        parts.push(`Últimas semanas ya dictadas (de más antigua a más reciente, máximo 4):\n${recentText}`);
+        parts.push(`Últimas semanas cargadas (de más antigua a más reciente, máximo 4):\n${recentText}`);
     } else {
         parts.push('No hay clases anteriores registradas todavía — es el punto de partida del curso o de la unidad.');
     }
@@ -536,7 +568,7 @@ async function generateSuggestNextWeek(params: {
     if (!message.parsed_output) {
         throw new Error('No se pudo parsear la sugerencia de próxima semana');
     }
-    return message.parsed_output as { title: string; description: string };
+    return message.parsed_output as { title: string; description: string; unit: 'current' | 'next' };
 }
 
 export async function POST(request: NextRequest) {
@@ -547,6 +579,7 @@ export async function POST(request: NextRequest) {
             previousDocument, techStack, include,
             subjectDescription, courseMode, technicalDocument, recentWeeks,
             exerciseProjectContext, exercisePreviousTitles,
+            unitAName, unitADescription, unitAWeekTitles, unitBName, unitBDescription,
         } = await request.json() as {
             type: string;
             topic?: string;
@@ -567,11 +600,16 @@ export async function POST(request: NextRequest) {
             recentWeeks?: RecentWeekSummary[];
             exerciseProjectContext?: string;
             exercisePreviousTitles?: string[];
+            unitAName?: string;
+            unitADescription?: string;
+            unitAWeekTitles?: string[];
+            unitBName?: string;
+            unitBDescription?: string;
         };
 
         if (type === 'suggest_next_week') {
-            if (!subjectName) {
-                return NextResponse.json({ error: 'Missing required field: subjectName' }, { status: 400 });
+            if (!subjectName || !unitAName) {
+                return NextResponse.json({ error: 'Missing required fields: subjectName and unitAName' }, { status: 400 });
             }
             const result = await generateSuggestNextWeek({
                 subjectName,
@@ -580,6 +618,11 @@ export async function POST(request: NextRequest) {
                 techStack: techStack?.trim() || undefined,
                 technicalDocument: technicalDocument?.trim() || undefined,
                 recentWeeks,
+                unitAName,
+                unitADescription: unitADescription?.trim() || undefined,
+                unitAWeekTitles: unitAWeekTitles ?? [],
+                unitBName: unitBName?.trim() || undefined,
+                unitBDescription: unitBDescription?.trim() || undefined,
             });
             return NextResponse.json(result);
         }

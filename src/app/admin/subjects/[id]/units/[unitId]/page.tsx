@@ -10,6 +10,7 @@ import EditMaterialName from '@/components/EditMaterialName';
 import GenerateAllContent from '@/components/GenerateAllContent';
 import GenerateTechnicalDoc from '@/components/GenerateTechnicalDoc';
 import GenerateClassKit from '@/components/GenerateClassKit';
+import ToggleDictada from '@/components/ToggleDictada';
 import { getMaterialBadge } from '@/lib/materialBadge';
 
 type Material = {
@@ -28,6 +29,7 @@ type Week = {
     title: string | null;
     description: string | null;
     technical_document_snapshot: string | null;
+    dictada: boolean;
     materials: Material[];
 };
 
@@ -140,8 +142,11 @@ export default async function UnitPage({
     // y eso deja huecos en la numeración. Si el actual es el primer/último de su unidad, el real
     // vive en la última/primera semana de la unidad anterior/siguiente del mismo subject (por
     // `order`) — una sola consulta de unidades, reutilizada para ambas direcciones.
+    // Filtrado por dictada=true: "clase anterior" es contenido que el estudiante ya vio de
+    // verdad, nunca una semana meramente planificada — si se contara una semana sin dictar como
+    // "anterior", el class kit conectaría con algo que todavía no pasó en el aula.
     function sameUnitPreviousWeek(week: Week): Week | null {
-        const earlier = weeksList.filter((w) => w.number < week.number);
+        const earlier = weeksList.filter((w) => w.number < week.number && w.dictada);
         if (earlier.length === 0) return null;
         return earlier.reduce((max, w) => (w.number > max.number ? w : max));
     }
@@ -170,6 +175,7 @@ export default async function UnitPage({
                 .from('weeks')
                 .select('title, description')
                 .eq('unit_id', units[currentIndex - 1].id)
+                .eq('dictada', true)
                 .order('number', { ascending: false })
                 .limit(1);
             crossUnitPreviousWeek = prevWeeks?.[0] ?? null;
@@ -230,7 +236,7 @@ export default async function UnitPage({
     // extendió el doc técnico, cae al de la última semana anterior que sí lo tenga, nunca a uno
     // futuro); 'topics' usa los títulos de las últimas semanas anteriores. Requiere mirar más
     // allá de esta unidad, así que se trae aparte con una sola consulta subject-wide.
-    let subjectWeeksOrdered: { id: string; number: number; title: string | null; technical_document_snapshot: string | null }[] = [];
+    let subjectWeeksOrdered: { id: string; number: number; title: string | null; technical_document_snapshot: string | null; dictada: boolean }[] = [];
     if (s?.course_mode === 'project' || s?.course_mode === 'topics') {
         const { data: subjectUnitsOrdered } = await supabase
             .from('units')
@@ -241,7 +247,7 @@ export default async function UnitPage({
         if (orderedUnitIds.length > 0) {
             const { data: subjectWeeksRaw } = await supabase
                 .from('weeks')
-                .select('id, number, title, technical_document_snapshot, unit_id')
+                .select('id, number, title, technical_document_snapshot, dictada, unit_id')
                 .in('unit_id', orderedUnitIds);
             const unitIndexById = new Map(orderedUnitIds.map((uid, i) => [uid, i]));
             subjectWeeksOrdered = (subjectWeeksRaw ?? []).slice().sort((a, b) => {
@@ -265,7 +271,9 @@ export default async function UnitPage({
         const idx = subjectWeeksOrdered.findIndex((w) => w.id === week.id);
         if (idx === -1) return [];
         return subjectWeeksOrdered
-            .slice(Math.max(0, idx - 4), idx)
+            .slice(0, idx)
+            .filter((w) => w.dictada)
+            .slice(-4)
             .map((w) => w.title)
             .filter((t): t is string => Boolean(t));
     }
@@ -394,6 +402,7 @@ export default async function UnitPage({
                                     </div>
 
                                     <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                                        <ToggleDictada weekId={week.id} dictada={week.dictada} />
                                         {/* Material count badge */}
                                         {matCount > 0 && (
                                             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">

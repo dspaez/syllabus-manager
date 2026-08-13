@@ -27,6 +27,7 @@ type UnitWeek = {
     number: number;
     title: string | null;
     description: string | null;
+    dictada: boolean;
     materials: WeekMaterial[];
 };
 
@@ -51,7 +52,7 @@ export default async function SubjectPage({
             supabase.from('subjects').select('*, semesters(name)').eq('id', id).single(),
             supabase
                 .from('units')
-                .select('id, name, description, order, weeks(id, number, title, description, materials(id, is_published, source, description))')
+                .select('id, name, description, order, weeks(id, number, title, description, dictada, materials(id, is_published, source, description))')
                 .eq('subject_id', id)
                 .order('order', { ascending: true }),
         ]);
@@ -83,49 +84,74 @@ export default async function SubjectPage({
         [...u.weeks].sort((a, b) => a.number - b.number).map((w) => ({ ...w, unitId: u.id, unitName: u.name }))
     );
 
-    let lastContentIndex = -1;
-    allWeeksOrdered.forEach((w, i) => { if ((w.materials?.length ?? 0) > 0) lastContentIndex = i; });
-    const existingTarget = lastContentIndex + 1 < allWeeksOrdered.length ? allWeeksOrdered[lastContentIndex + 1] : null;
+    // La "frontera" del curso es la última semana con TÍTULO real — no la última con materiales.
+    // Esto permite anotar el título de varias semanas seguidas (planificar) sin haber generado
+    // contenido todavía para ninguna; el contenido (ejercicios, class kit) se genera después, en
+    // cualquier orden. Una vez que una semana tiene título, "Sugerir" nunca la vuelve a ofrecer —
+    // se corrige a mano en "Editar semana" si hace falta.
+    const titledWeeks = allWeeksOrdered.filter((w) => w.title && w.title.trim());
+    const blankTarget = allWeeksOrdered.find((w) => !w.title || !w.title.trim()) ?? null;
 
     let suggestTargetWeekId: string | null = null;
     let suggestTargetWeekNumber = 1;
-    let suggestTargetUnitId: string | null = typedUnits[0]?.id ?? null;
-    let suggestTargetUnitName = typedUnits[0]?.name ?? '';
+    let suggestUnitAId = typedUnits[0]?.id ?? '';
+    let suggestUnitAName = typedUnits[0]?.name ?? '';
+    let suggestUnitADescription: string | null = typedUnits[0]?.description ?? null;
+    let suggestUnitAWeekTitles: string[] = [];
+    let suggestUnitBId: string | null = null;
+    let suggestUnitBName: string | null = null;
+    let suggestUnitBDescription: string | null = null;
 
-    if (existingTarget) {
-        // Ya existe una semana vacía después de la última con contenido — completarla.
-        suggestTargetWeekId = existingTarget.id;
-        suggestTargetWeekNumber = existingTarget.number;
-        suggestTargetUnitId = existingTarget.unitId;
-        suggestTargetUnitName = existingTarget.unitName;
-    } else if (allWeeksOrdered.length > 0) {
-        // No hay ninguna semana vacía ya creada — hay que crear una, SIEMPRE en la misma unidad
-        // del último contenido. El sistema no tiene forma de saber cuántas semanas le "tocan" a
-        // cada unidad, así que nunca asume que hay que cruzar a la siguiente solo porque existe
-        // y está vacía — todas las unidades arrancan vacías hasta que alguien les pone la primera
-        // semana. Pasar de unidad es una decisión explícita del docente: creando a mano la primera
-        // semana de la unidad siguiente cuando decida que la actual ya está completa (con "+ Nueva
-        // semana" desde esa unidad) — a partir de ahí, esta herramienta continúa desde esa semana.
-        const lastWeek = allWeeksOrdered[allWeeksOrdered.length - 1];
-        const targetUnit = typedUnits.find((u) => u.id === lastWeek.unitId) ?? typedUnits[0];
-        // Numeración global del curso, no por unidad — independientemente de cómo se haya creado
-        // cada semana (curriculum, a mano, o esta misma herramienta), la próxima siempre sigue el
-        // número más alto de TODA la materia.
-        suggestTargetUnitId = targetUnit.id;
-        suggestTargetUnitName = targetUnit.name;
+    if (blankTarget) {
+        // Ya existe una semana sin título (creada a mano y sin completar, o legacy) — completarla
+        // en SU propia unidad. Acá no hay decisión de cruce: la unidad ya está fija.
+        suggestTargetWeekId = blankTarget.id;
+        suggestTargetWeekNumber = blankTarget.number;
+        suggestUnitAId = blankTarget.unitId;
+        suggestUnitAName = blankTarget.unitName;
+        const unit = typedUnits.find((u) => u.id === blankTarget.unitId);
+        suggestUnitADescription = unit?.description ?? null;
+        suggestUnitAWeekTitles = (unit?.weeks ?? []).map((w) => w.title).filter((t): t is string => Boolean(t?.trim()));
+    } else if (titledWeeks.length > 0) {
+        // Todas las semanas existentes ya tienen título — hay que proponer una nueva. Se ofrecen
+        // las 2 unidades candidatas (la del último título, y la siguiente por `order` si existe)
+        // y es la IA quien decide cuál corresponde según el contenido real de cada una — el
+        // sistema no tiene forma de saber "cuántas semanas le tocan" a una unidad de antemano.
+        const lastTitled = titledWeeks[titledWeeks.length - 1];
+        const currentUnitIndex = typedUnits.findIndex((u) => u.id === lastTitled.unitId);
+        const currentUnit = typedUnits[currentUnitIndex] ?? typedUnits[0];
+        const nextUnit = currentUnitIndex >= 0 ? typedUnits[currentUnitIndex + 1] : undefined;
+
+        suggestUnitAId = currentUnit.id;
+        suggestUnitAName = currentUnit.name;
+        suggestUnitADescription = currentUnit.description;
+        suggestUnitAWeekTitles = (currentUnit.weeks ?? [])
+            .map((w) => w.title)
+            .filter((t): t is string => Boolean(t?.trim()));
+
+        if (nextUnit) {
+            suggestUnitBId = nextUnit.id;
+            suggestUnitBName = nextUnit.name;
+            suggestUnitBDescription = nextUnit.description;
+        }
+
+        // Numeración global del curso, no por unidad — sin importar en qué unidad termine cayendo.
         suggestTargetWeekNumber = Math.max(...allWeeksOrdered.map((w) => w.number)) + 1;
     }
-    // Si no hay ninguna semana en toda la materia todavía, se queda en la primera unidad, semana 1
-    // (los valores por defecto de arriba ya cubren ese caso).
+    // Si no hay ninguna semana en toda la materia todavía, se queda en la primera unidad, semana 1,
+    // sin unidad B (los valores por defecto de arriba ya cubren ese caso).
 
-    // Últimas hasta 4 semanas ANTES del objetivo, en el orden real del curso (no todo el
-    // historial, para no hacer crecer el prompt sin control en materias largas).
-    const targetGlobalIndex = existingTarget
-        ? allWeeksOrdered.findIndex((w) => w.id === existingTarget.id)
+    // Últimas hasta 4 semanas TITULADAS antes del objetivo — incluye tanto las ya dictadas como
+    // las solo planificadas (marcadas con `dictada`), para que la IA sepa distinguir qué es
+    // confirmado y qué es todavía tentativo al proponer lo que sigue.
+    const targetGlobalIndex = blankTarget
+        ? allWeeksOrdered.findIndex((w) => w.id === blankTarget.id)
         : allWeeksOrdered.length;
     const suggestRecentWeeks = allWeeksOrdered
-        .slice(Math.max(0, targetGlobalIndex - 4), targetGlobalIndex)
-        .map((w) => ({ title: w.title, description: w.description, exerciseTitle: exerciseTitleFor(w) }));
+        .slice(0, targetGlobalIndex)
+        .filter((w) => w.title && w.title.trim())
+        .slice(-4)
+        .map((w) => ({ title: w.title, description: w.description, exerciseTitle: exerciseTitleFor(w), dictada: w.dictada }));
 
     const totalWeeks = typedUnits.reduce((acc, u) => acc + (u.weeks?.length ?? 0), 0);
     const totalMaterials = typedUnits.reduce(
@@ -184,13 +210,18 @@ export default async function SubjectPage({
                     {/* Actions */}
                     <div className="flex items-center gap-2 flex-wrap shrink-0">
                         <CurriculumPlanner subjectId={s.id} subjectName={s.name} />
-                        {typedUnits.length > 0 && suggestTargetUnitId && (
+                        {typedUnits.length > 0 && suggestUnitAId && (
                             <SuggestNextWeek
                                 subjectId={s.id}
-                                unitId={suggestTargetUnitId}
                                 targetWeekId={suggestTargetWeekId}
                                 targetWeekNumber={suggestTargetWeekNumber}
-                                targetUnitName={suggestTargetUnitName}
+                                unitAId={suggestUnitAId}
+                                unitAName={suggestUnitAName}
+                                unitADescription={suggestUnitADescription}
+                                unitAWeekTitles={suggestUnitAWeekTitles}
+                                unitBId={suggestUnitBId}
+                                unitBName={suggestUnitBName}
+                                unitBDescription={suggestUnitBDescription}
                                 subjectName={s.name}
                                 subjectDescription={s.description}
                                 courseMode={s.course_mode}

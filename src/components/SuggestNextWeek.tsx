@@ -9,14 +9,20 @@ interface RecentWeek {
     title: string | null;
     description: string | null;
     exerciseTitle: string | null;
+    dictada: boolean;
 }
 
 interface Props {
     subjectId: string;
-    unitId: string;
-    targetUnitName: string;
     targetWeekId: string | null;
     targetWeekNumber: number;
+    unitAId: string;
+    unitAName: string;
+    unitADescription?: string | null;
+    unitAWeekTitles: string[];
+    unitBId: string | null;
+    unitBName?: string | null;
+    unitBDescription?: string | null;
     subjectName: string;
     subjectDescription?: string | null;
     courseMode: string | null;
@@ -29,8 +35,10 @@ interface Props {
 type Stage = 'idle' | 'result';
 
 export default function SuggestNextWeek({
-    subjectId, unitId, targetUnitName, targetWeekId, targetWeekNumber, subjectName, subjectDescription,
-    courseMode, techStack, technicalDocument, recentWeeks, accent,
+    subjectId, targetWeekId, targetWeekNumber,
+    unitAId, unitAName, unitADescription, unitAWeekTitles,
+    unitBId, unitBName, unitBDescription,
+    subjectName, subjectDescription, courseMode, techStack, technicalDocument, recentWeeks, accent,
 }: Props) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -39,8 +47,14 @@ export default function SuggestNextWeek({
     const [error, setError] = useState<string | null>(null);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    const [aiUnit, setAiUnit] = useState<'current' | 'next'>('current');
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+
+    // Solo se puede cruzar a la unidad B cuando NO hay semana en blanco pendiente en A
+    // (targetWeekId viene null) — completar una semana en blanco siempre es dentro de A.
+    const resolvedUnitId = !targetWeekId && aiUnit === 'next' && unitBId ? unitBId : unitAId;
+    const resolvedUnitName = !targetWeekId && aiUnit === 'next' && unitBId ? (unitBName ?? unitAName) : unitAName;
 
     const hasRealContext = courseMode === 'project'
         ? Boolean(technicalDocument?.trim())
@@ -51,6 +65,7 @@ export default function SuggestNextWeek({
         setError(null);
         setTitle('');
         setDescription('');
+        setAiUnit('current');
         setSaving(false);
         setSaved(false);
     }
@@ -80,6 +95,11 @@ export default function SuggestNextWeek({
                     techStack: techStack ?? undefined,
                     technicalDocument: courseMode === 'project' ? (technicalDocument ?? undefined) : undefined,
                     recentWeeks: courseMode === 'topics' ? recentWeeks : undefined,
+                    unitAName,
+                    unitADescription: unitADescription ?? undefined,
+                    unitAWeekTitles,
+                    unitBName: !targetWeekId ? (unitBName ?? undefined) : undefined,
+                    unitBDescription: !targetWeekId ? (unitBDescription ?? undefined) : undefined,
                 }),
             });
 
@@ -88,9 +108,10 @@ export default function SuggestNextWeek({
                 throw new Error(data.error ?? 'Error al generar la sugerencia');
             }
 
-            const data = await res.json() as { title: string; description: string };
+            const data = await res.json() as { title: string; description: string; unit: 'current' | 'next' };
             setTitle(data.title);
             setDescription(data.description);
+            setAiUnit(data.unit);
             setStage('result');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -116,7 +137,7 @@ export default function SuggestNextWeek({
                 const { error: dbError } = await supabase
                     .from('weeks')
                     .insert({
-                        unit_id: unitId,
+                        unit_id: resolvedUnitId,
                         number: targetWeekNumber,
                         title: title.trim(),
                         description: description.trim() || null,
@@ -158,8 +179,12 @@ export default function SuggestNextWeek({
                                 </h2>
                                 <p className="text-xs text-gray-500 mt-0.5">
                                     {targetWeekId
-                                        ? `Va a completar esta semana en ${targetUnitName} (todavía sin materiales).`
-                                        : `No hay semana siguiente creada — se va a crear en ${targetUnitName}.`}
+                                        ? `Va a completar esta semana en ${unitAName} (todavía sin título).`
+                                        : unitBId
+                                        ? stage === 'result'
+                                            ? `Se va a crear en ${resolvedUnitName} — la IA decidió que el tema corresponde a esa unidad.`
+                                            : `No hay semana siguiente creada — se va a crear en ${unitAName} o en ${unitBName}, según a qué unidad corresponda el tema.`
+                                        : `No hay semana siguiente creada — se va a crear en ${unitAName}.`}
                                 </p>
                             </div>
                             <button
@@ -180,7 +205,7 @@ export default function SuggestNextWeek({
                             <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800 border border-emerald-200">
                                 ✓ Se va a basar en {courseMode === 'project'
                                     ? 'el documento técnico actual del proyecto'
-                                    : `las últimas ${recentWeeks.length} semana${recentWeeks.length === 1 ? '' : 's'} ya dictadas`}.
+                                    : `las últimas ${recentWeeks.length} semana${recentWeeks.length === 1 ? '' : 's'} cargadas`}.
                             </p>
                         ) : (
                             <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500 border border-gray-200">
@@ -234,7 +259,7 @@ export default function SuggestNextWeek({
                                     {saved ? (
                                         <p className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 border border-green-200 text-center">
                                             ✓ Semana {targetWeekNumber} guardada
-                                            <Link href={`/admin/subjects/${subjectId}/units/${unitId}`} className="font-semibold underline">
+                                            <Link href={`/admin/subjects/${subjectId}/units/${resolvedUnitId}`} className="font-semibold underline">
                                                 Ver semana →
                                             </Link>
                                         </p>
