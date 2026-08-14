@@ -112,6 +112,71 @@ export function addMonoBox(doc: jsPDF, x: number, y: number, w: number, pageHeig
     return y + height;
 }
 
+// Mezcla el color de acento hacia blanco — para fondos tenues de tarjetas/cajas sin
+// depender de canal alfa (jsPDF lo soporta vía GState, pero mezclar RGB es más simple y
+// suficiente acá: 0 = color puro, 1 = blanco puro).
+function tint(rgb: [number, number, number], amount: number): [number, number, number] {
+    return [
+        Math.round(rgb[0] + (255 - rgb[0]) * amount),
+        Math.round(rgb[1] + (255 - rgb[1]) * amount),
+        Math.round(rgb[2] + (255 - rgb[2]) * amount),
+    ];
+}
+
+// Caja de contexto con barra de acento a la izquierda — misma idea que los callouts de
+// Class Kit (pdfHelpers.ts) pero en paleta clara, para darle un ancla visual al "Contexto"
+// sin perder el tono formal del documento.
+export function addAccentBox(doc: jsPDF, x: number, y: number, w: number, pageHeight: number, accentRgb: [number, number, number], text: string): number {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    const lines = doc.splitTextToSize(text, w - 10) as string[];
+    const height = lines.length * 4.6 + 8;
+    y = ensureSpace(doc, y, height, pageHeight);
+
+    doc.setFillColor(...tint(accentRgb, 0.93));
+    doc.roundedRect(x, y, w, height, 1.5, 1.5, 'F');
+    doc.setFillColor(...accentRgb);
+    doc.rect(x, y, 1.2, height, 'F');
+
+    doc.setTextColor(...TEXT_MAIN);
+    doc.text(lines, x + 6, y + 6);
+    return y + height;
+}
+
+// Lista numerada con insignias circulares de acento — para requerimientos planos de una
+// sola oración (ej. Ejercicios) donde no hay un título corto separable del detalle, así
+// que un numerado tipo "1. texto en negrita" queda demasiado pesado (ver addNumberedList).
+// Acá el número vive en un círculo de color, el texto en peso normal al lado.
+export function addBadgeNumberedList(doc: jsPDF, x: number, y: number, w: number, pageHeight: number, accentRgb: [number, number, number], items: string[]): number {
+    const badgeD = 6;
+    const gap = 3;
+    const textX = x + badgeD + gap;
+    const textW = w - badgeD - gap;
+
+    items.forEach((item, i) => {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9.5);
+        const lines = doc.splitTextToSize(item, textW) as string[];
+        const rowH = Math.max(badgeD + 2, lines.length * 4.6 + 2);
+        y = ensureSpace(doc, y, rowH + 3, pageHeight);
+
+        doc.setFillColor(...accentRgb);
+        doc.circle(x + badgeD / 2, y + 2.5, badgeD / 2, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(255, 255, 255);
+        doc.text(String(i + 1), x + badgeD / 2, y + 3.6, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9.5);
+        doc.setTextColor(...TEXT_MAIN);
+        doc.text(lines, textX, y + 3.2);
+
+        y += rowH + 3;
+    });
+    return y;
+}
+
 export interface NumberedItem {
     titulo: string;
     detalle?: string;

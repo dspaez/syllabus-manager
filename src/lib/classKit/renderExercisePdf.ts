@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import { hexToRgb, resolveAccent } from './palette';
 import { ensureSpace } from './pdfHelpers';
-import { addDocHeader, addMetaTable, addSectionHeading, addParagraph, addNumberedList } from '@/lib/pdf/formalDoc';
+import { addDocHeader, addMetaTable, addSectionHeading, addAccentBox, addBadgeNumberedList } from '@/lib/pdf/formalDoc';
 
 export interface ExerciseStatement {
     titulo: string;
@@ -29,12 +29,12 @@ function renderExercise(
 
     y = ensureSpace(doc, y, 24, pageHeight);
     y = addSectionHeading(doc, marginX, y, accentRgb, 'Contexto');
-    y = addParagraph(doc, marginX, y, contentW, pageHeight, ex.contexto) + 8;
+    y = addAccentBox(doc, marginX, y, contentW, pageHeight, accentRgb, ex.contexto) + 8;
 
     if (ex.requerimientos.length > 0) {
         y = ensureSpace(doc, y, 24, pageHeight);
         y = addSectionHeading(doc, marginX, y, accentRgb, 'Requerimientos');
-        addNumberedList(doc, marginX, y, contentW, pageHeight, accentRgb, ex.requerimientos.map((r) => ({ titulo: r })));
+        addBadgeNumberedList(doc, marginX, y, contentW, pageHeight, accentRgb, ex.requerimientos);
     }
 }
 
