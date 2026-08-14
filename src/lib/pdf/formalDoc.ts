@@ -80,6 +80,25 @@ export function addBulletList(doc: jsPDF, x: number, y: number, w: number, pageH
     return y;
 }
 
+// Checklist de autoevaluación — "[ ] pregunta", nunca revela la respuesta (ver
+// Exercise.checklist en src/lib/exercise/schema.ts). ASCII literal, no glifo Unicode de
+// checkbox: jsPDF con las fuentes base14 no lo mide/renderiza de forma confiable (mismo
+// problema de raíz ya documentado en pdfHelpers.ts). Paginado ítem por ítem, mismo motivo
+// que addBadgeNumberedList.
+export function addChecklist(doc: jsPDF, x: number, y: number, w: number, pageHeight: number, items: string[]): number {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...TEXT_MAIN);
+    for (const item of items) {
+        const lines = doc.splitTextToSize(`[ ]  ${item}`, w) as string[];
+        const needed = lines.length * 4.6 + 1.5;
+        y = ensureSpace(doc, y, needed, pageHeight);
+        doc.text(lines, x, y);
+        y += needed;
+    }
+    return y;
+}
+
 export function addParagraph(doc: jsPDF, x: number, y: number, w: number, pageHeight: number, text: string): number {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9.5);

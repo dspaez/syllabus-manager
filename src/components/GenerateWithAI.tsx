@@ -2,25 +2,14 @@
 
 import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { parseExercisesContent, type Exercise, type ExercisesContent } from '@/lib/exercise/schema';
 
 type GenerateType = 'exercises' | 'guide';
-
-interface Exercise {
-    titulo: string;
-    contexto: string;
-    requerimientos: string[];
-    conceptos?: string[];
-    solucionDocente: string;
-}
+type Dificultad = 'basico' | 'intermedio' | 'avanzado';
 
 interface Concept {
     name: string;
     explanation: string;
-}
-
-interface ExercisesResult {
-    ejercicioClase: Exercise;
-    ejerciciosTarea?: Exercise[];
 }
 
 interface GuideResult {
@@ -30,7 +19,7 @@ interface GuideResult {
     summary: string;
 }
 
-type GenerateResult = ExercisesResult | GuideResult;
+type GenerateResult = ExercisesContent | GuideResult;
 
 interface Props {
     weekId: string;
@@ -53,18 +42,39 @@ const TYPE_LABELS: Record<GenerateType, string> = {
     guide: 'Guía de estudio',
 };
 
+const DIFICULTAD_LABELS: Record<Dificultad, string> = {
+    basico: 'Básico',
+    intermedio: 'Intermedio',
+    avanzado: 'Avanzado',
+};
+
 function ExerciseCard({ ex, label }: { ex: Exercise; label: string }) {
     return (
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
             <p className="text-xs font-medium text-violet-600 uppercase tracking-wide">{label}</p>
             <p className="mt-0.5 font-semibold text-gray-800">{ex.titulo}</p>
             <p className="mt-2 text-sm text-gray-700">{ex.contexto}</p>
+            {ex.menu && ex.menu.length > 0 && (
+                <div className="mt-2 rounded-md bg-slate-100 px-3 py-2 font-mono text-xs text-slate-700 whitespace-pre-wrap">
+                    {ex.menu.join('\n')}
+                </div>
+            )}
             {ex.requerimientos.length > 0 && (
                 <div className="mt-2">
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Requerimientos</p>
                     <ul className="mt-1 list-disc pl-5 space-y-0.5">
                         {ex.requerimientos.map((req, j) => (
                             <li key={j} className="text-sm text-gray-600">{req}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+            {ex.checklist && ex.checklist.length > 0 && (
+                <div className="mt-2">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Checklist de autoevaluación</p>
+                    <ul className="mt-1 space-y-0.5">
+                        {ex.checklist.map((q, j) => (
+                            <li key={j} className="text-sm text-gray-600">☐ {q}</li>
                         ))}
                     </ul>
                 </div>
@@ -79,12 +89,14 @@ function ExerciseCard({ ex, label }: { ex: Exercise; label: string }) {
     );
 }
 
-function ExercisesView({ data }: { data: ExercisesResult }) {
+function ExercisesView({ data }: { data: ExercisesContent }) {
     return (
         <div className="space-y-4">
-            <ExerciseCard ex={data.ejercicioClase} label="Ejercicio de clase" />
-            {(data.ejerciciosTarea ?? []).map((ex, i) => (
-                <ExerciseCard key={i} ex={ex} label={`Tarea — variante ${i + 1}`} />
+            {data.ejerciciosPractica.map((ex, i) => (
+                <ExerciseCard key={`p${i}`} ex={ex} label={data.ejerciciosPractica.length > 1 ? `Práctica ${i + 1}` : 'Ejercicio de práctica'} />
+            ))}
+            {data.ejerciciosTarea.map((ex, i) => (
+                <ExerciseCard key={`t${i}`} ex={ex} label={`Tarea — variante ${i + 1}`} />
             ))}
         </div>
     );
@@ -129,7 +141,7 @@ function GuideView({ data }: { data: GuideResult }) {
 }
 
 function ResultView({ type, result }: { type: GenerateType; result: GenerateResult }) {
-    if (type === 'exercises') return <ExercisesView data={result as ExercisesResult} />;
+    if (type === 'exercises') return <ExercisesView data={result as ExercisesContent} />;
     return <GuideView data={result as GuideResult} />;
 }
 
@@ -137,6 +149,9 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
     const [open, setOpen] = useState(false);
     const [type, setType] = useState<GenerateType>('exercises');
     const [topic, setTopic] = useState(weekTopic);
+    const [dificultad, setDificultad] = useState<Dificultad>('intermedio');
+    const [cantidadPractica, setCantidadPractica] = useState(1);
+    const [cantidadTarea, setCantidadTarea] = useState(2);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<GenerateResult | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -144,13 +159,20 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
     const [saved, setSaved] = useState(false);
     const [savedFileUrl, setSavedFileUrl] = useState<string | null>(null);
 
+    const [generatingDocente, setGeneratingDocente] = useState(false);
+    const [docenteSolutionUrl, setDocenteSolutionUrl] = useState<string | null>(null);
+
     function handleOpen() {
         setOpen(true);
         setTopic(weekTopic);
+        setDificultad('intermedio');
+        setCantidadPractica(1);
+        setCantidadTarea(2);
         setResult(null);
         setError(null);
         setSaved(false);
         setSavedFileUrl(null);
+        setDocenteSolutionUrl(null);
     }
 
     function handleClose() {
@@ -159,6 +181,7 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
         setError(null);
         setSaved(false);
         setSavedFileUrl(null);
+        setDocenteSolutionUrl(null);
     }
 
     async function handleGenerate() {
@@ -168,6 +191,7 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
         setResult(null);
         setSaved(false);
         setSavedFileUrl(null);
+        setDocenteSolutionUrl(null);
 
         try {
             const res = await fetch('/api/generate', {
@@ -181,6 +205,9 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
                         courseMode: courseMode ?? undefined,
                         exerciseProjectContext: courseMode === 'project' ? (exerciseProjectContext ?? undefined) : undefined,
                         exercisePreviousTitles: courseMode === 'topics' ? exercisePreviousTitles : undefined,
+                        nivelDificultad: dificultad,
+                        cantidadPractica,
+                        cantidadTarea,
                     } : {}),
                 }),
             });
@@ -191,7 +218,13 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
             }
 
             const data = await res.json();
-            setResult(data);
+            if (type === 'exercises') {
+                const parsed = parseExercisesContent(JSON.stringify(data));
+                if (!parsed) throw new Error('La respuesta no tiene el formato esperado');
+                setResult(parsed);
+            } else {
+                setResult(data);
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Error desconocido');
         } finally {
@@ -207,7 +240,6 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
         try {
             const supabase = createClient();
 
-            // Generate concise name with prefix
             const prefix = type === 'exercises' ? 'Ejercicios' : 'Guía';
             const truncatedTopic = topic.trim().substring(0, 50);
             const materialName = `${prefix}: ${truncatedTopic}`;
@@ -218,13 +250,13 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
             // contexto real (Class Kit, próxima semana, próximos ejercicios).
             let fileUrl: string | undefined;
             if (type === 'exercises') {
-                const { ejercicioClase, ejerciciosTarea } = result as ExercisesResult;
+                const content = result as ExercisesContent;
                 const res = await fetch('/api/render-exercise-pdf', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        ejercicioClase,
-                        ejerciciosTarea,
+                        ejerciciosPractica: content.ejerciciosPractica,
+                        ejerciciosTarea: content.ejerciciosTarea,
                         weekId,
                         subjectName,
                         weekTopic: topic.trim(),
@@ -256,6 +288,44 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
             setError(err instanceof Error ? err.message : 'Error al guardar');
         } finally {
             setSaving(false);
+        }
+    }
+
+    // PDF aparte SOLO para el docente (incluye la solución completa de cada ejercicio) — nunca
+    // se guarda como fila en `materials`, así que nunca aparece en la lista de materiales ni
+    // tiene una URL pública tipo /materials/{id}. El link solo se muestra acá, en esta sesión de
+    // admin — es la forma de mantenerlo "solo para vos" con la arquitectura actual (ver detalle
+    // de la limitación en la respuesta al usuario: el archivo en Storage no tiene otra protección
+    // más que no estar enlazado desde ningún lado de la app).
+    async function handleGenerateDocenteSolution() {
+        if (!result || type !== 'exercises') return;
+        setGeneratingDocente(true);
+        setError(null);
+
+        try {
+            const content = result as ExercisesContent;
+            const res = await fetch('/api/render-docente-solution-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ejerciciosPractica: content.ejerciciosPractica,
+                    ejerciciosTarea: content.ejerciciosTarea,
+                    weekId,
+                    subjectName,
+                    weekTopic: topic.trim(),
+                    accentColor: accentColor ?? undefined,
+                }),
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error ?? 'Error al generar la solución para el docente');
+            }
+            const data = await res.json() as { url: string };
+            setDocenteSolutionUrl(data.url);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Error desconocido');
+        } finally {
+            setGeneratingDocente(false);
         }
     }
 
@@ -293,7 +363,7 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
                                 <label className="text-sm font-medium text-gray-700">Tipo de contenido</label>
                                 <select
                                     value={type}
-                                    onChange={(e) => { setType(e.target.value as GenerateType); setResult(null); setSaved(false); setSavedFileUrl(null); }}
+                                    onChange={(e) => { setType(e.target.value as GenerateType); setResult(null); setSaved(false); setSavedFileUrl(null); setDocenteSolutionUrl(null); }}
                                     className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
                                 >
                                     {(Object.entries(TYPE_LABELS) as [GenerateType, string][]).map(([val, label]) => (
@@ -301,6 +371,21 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
                                     ))}
                                 </select>
                             </div>
+
+                            {type === 'exercises' && (
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm font-medium text-gray-700">Dificultad</label>
+                                    <select
+                                        value={dificultad}
+                                        onChange={(e) => setDificultad(e.target.value as Dificultad)}
+                                        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                    >
+                                        {(Object.entries(DIFICULTAD_LABELS) as [Dificultad, string][]).map(([val, label]) => (
+                                            <option key={val} value={val}>{label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
 
                             <div className="flex flex-col gap-1 sm:col-span-2">
                                 <label className="text-sm font-medium text-gray-700">Tema</label>
@@ -312,6 +397,33 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
                                     className="resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
                                 />
                             </div>
+
+                            {type === 'exercises' && (
+                                <>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-sm font-medium text-gray-700">Cantidad de práctica</label>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={5}
+                                            value={cantidadPractica}
+                                            onChange={(e) => setCantidadPractica(Number(e.target.value))}
+                                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-sm font-medium text-gray-700">Cantidad de tarea</label>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={5}
+                                            value={cantidadTarea}
+                                            onChange={(e) => setCantidadTarea(Number(e.target.value))}
+                                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         {/* Contexto real detectado — solo aplica al tipo "exercises", igual que
@@ -395,6 +507,32 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
                                             'Guardar como material'
                                         )}
                                     </button>
+                                )}
+
+                                {type === 'exercises' && (
+                                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                                        <p className="text-xs font-medium text-amber-900">
+                                            Solución para vos — nunca se publica ni aparece en la lista de materiales del estudiante.
+                                        </p>
+                                        {docenteSolutionUrl ? (
+                                            <a
+                                                href={docenteSolutionUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="mt-1.5 inline-flex items-center gap-1 text-sm font-semibold text-amber-800 underline"
+                                            >
+                                                Ver solución docente (PDF) →
+                                            </a>
+                                        ) : (
+                                            <button
+                                                onClick={handleGenerateDocenteSolution}
+                                                disabled={generatingDocente}
+                                                className="mt-1.5 inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50 transition-colors"
+                                            >
+                                                {generatingDocente ? 'Generando...' : 'Generar PDF de solución (docente)'}
+                                            </button>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         )}

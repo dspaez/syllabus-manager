@@ -7,6 +7,7 @@ import CurriculumPlanner from '@/components/CurriculumPlanner';
 import ExportSyllabus from '@/components/ExportSyllabus';
 import SuggestNextWeek from '@/components/SuggestNextWeek';
 import { subjectEmoji } from '@/utils/subjectEmoji';
+import { parseExercisesContent } from '@/lib/exercise/schema';
 
 type Subject = {
     id: string;
@@ -69,13 +70,10 @@ export default async function SubjectPage({
     // mirando, porque la unidad que estás viendo puede no ser la que realmente sigue en el curso.
     function exerciseTitleFor(week: UnitWeek): string | null {
         for (const m of week.materials ?? []) {
-            if (m.source !== 'ai' || !m.description) continue;
-            try {
-                const parsed = JSON.parse(m.description) as { ejercicioClase?: { titulo?: string } };
-                if (parsed.ejercicioClase?.titulo) return parsed.ejercicioClase.titulo;
-            } catch {
-                continue;
-            }
+            if (m.source !== 'ai') continue;
+            const parsed = parseExercisesContent(m.description);
+            const titulo = parsed?.ejerciciosPractica[0]?.titulo;
+            if (titulo) return titulo;
         }
         return null;
     }
@@ -87,13 +85,10 @@ export default async function SubjectPage({
     // hecho (ej. semana 1 ya practicó constructores/getters aunque su título fuera solo "intro").
     function exerciseConceptsFor(week: UnitWeek): string[] {
         for (const m of week.materials ?? []) {
-            if (m.source !== 'ai' || !m.description) continue;
-            try {
-                const parsed = JSON.parse(m.description) as { ejercicioClase?: { conceptos?: string[] } };
-                if (parsed.ejercicioClase?.conceptos?.length) return parsed.ejercicioClase.conceptos;
-            } catch {
-                continue;
-            }
+            if (m.source !== 'ai') continue;
+            const parsed = parseExercisesContent(m.description);
+            const conceptos = parsed?.ejerciciosPractica[0]?.conceptos;
+            if (conceptos?.length) return conceptos;
         }
         return [];
     }

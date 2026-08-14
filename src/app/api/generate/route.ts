@@ -17,11 +17,9 @@ const techStackContext = (techStack?: string) =>
 // elimina, solo acota cuánto piensa) — el JSON visible puede truncarse antes del límite
 // nominal si el tipo pide contenido extenso.
 const DEFAULT_MAX_OUTPUT_TOKENS = 8192;
-const MAX_OUTPUT_TOKENS: Partial<Record<string, number>> = {
-    // ejercicioClase + variantes de tarea con código de solución completo son bastante más
-    // extensos que el resto de los tipos; 8192 se truncaba de forma consistente.
-    exercises: 32768,
-};
+// "exercises" ya no usa este mapa — su presupuesto se calcula dinámicamente según la cantidad
+// de ejercicios pedidos (ver rama `type === 'exercises'` más abajo).
+const MAX_OUTPUT_TOKENS: Partial<Record<string, number>> = {};
 
 /**
  * Repara JSON truncado por corte de tokens. Primero intenta cerrar la cadena/objeto/array
@@ -139,6 +137,22 @@ const PROMPTS: Record<string, (topic: string, techStack?: string) => string> = {
         `{ "introduction": "", "concepts": [{ "name": "", "explanation": "" }], "examples": [], "summary": "" }`,
 };
 
+const DIFFICULTY_LABELS: Record<string, string> = {
+    basico: 'Básico',
+    intermedio: 'Intermedio',
+    avanzado: 'Avanzado',
+};
+
+const DIFFICULTY_GUIDANCE: Record<string, string> = {
+    basico: 'conceptos fundamentales del tema únicamente, pocos pasos, SIN combinar varias técnicas a la vez ' +
+        'ni agregar un menú interactivo salvo que el tema mismo lo requiera.',
+    intermedio: 'combina 2 o 3 técnicas del tema en un solo ejercicio, incluye al menos una validación o caso ' +
+        'especial real, y puede tener un menú interactivo simple (do-while) con pocas opciones.',
+    avanzado: 'integra el tema con conceptos YA vistos en semanas anteriores (ver contexto más abajo si lo hay), ' +
+        'incluye varias validaciones/casos especiales reales, y un flujo de programa más completo — normalmente ' +
+        'un menú interactivo (do-while) con varias opciones que ejercitan distintas partes de la arquitectura.',
+};
+
 // Separado del mapa genérico PROMPTS (a diferencia de slides/guide) porque necesita contexto
 // real por course_mode — mismo mecanismo que class_kit, nunca mezclados: 'project' ancla al
 // documento técnico real (el más reciente disponible hasta esta semana, no necesariamente el
@@ -150,6 +164,9 @@ function exercisesPrompt(
     courseMode: string | null | undefined,
     exerciseProjectContext: string | undefined,
     exercisePreviousTitles: string[] | undefined,
+    nivelDificultad: string,
+    cantidadPractica: number,
+    cantidadTarea: number,
 ): string {
     const contextBlock = courseMode === 'project' && exerciseProjectContext?.trim()
         ? `\nContexto real del proyecto hasta este punto del curso (arquitectura y convenciones ya construidas — el ejercicio tiene que ser coherente con esto, un dominio/stack paralelo NO):\n${exerciseProjectContext.trim()}\n`
@@ -158,34 +175,57 @@ function exercisesPrompt(
           `solo planificadas o con título cargado pero sin dar todavía — esas quedan afuera de esta lista a ` +
           `propósito): no repitas los conceptos ya practicados ahí, construí sobre ellos cuando aplique:\n- ${exercisePreviousTitles.join('\n- ')}\n`
         : '';
+    const difficultyKey = DIFFICULTY_GUIDANCE[nivelDificultad] ? nivelDificultad : 'intermedio';
+
     return (
-        `Eres un docente universitario diseñando el ejercicio principal de una clase de programación sobre ${topic}. ` +
+        `Eres un docente universitario diseñando ejercicios de práctica de una clase de programación sobre ${topic}, ` +
+        `con el mismo nivel de precisión y detalle que un docente experimentado escribiría para un examen o guía de ` +
+        `repaso — nunca genérico ni superficial.\n` +
         techStackContext(techStack) +
         contextBlock +
+        `\nNivel de dificultad pedido: ${DIFFICULTY_LABELS[difficultyKey]}. ${DIFFICULTY_GUIDANCE[difficultyKey]}\n` +
         `\nIMPORTANTE sobre el alcance: el ejercicio debe practicar EXACTAMENTE lo que describe "${topic}", ni más ni ` +
-        `menos. Si el tema es introductorio o conceptual, el ejercicio también debe serlo (ej. una clase simple con ` +
-        `pocos atributos e instanciar un par de objetos) — no te adelantes a incorporar técnicas de temas más ` +
+        `menos, ajustado al nivel de dificultad de arriba — no te adelantes a incorporar técnicas de temas más ` +
         `avanzados (constructores parametrizados con validaciones, encapsulamiento con getters/setters, herencia, ` +
-        `etc.) salvo que el propio tema ya las mencione explícitamente. Esas técnicas quedan para cuando el tema de ` +
-        `esa semana las introduzca.\n` +
-        `\nGenera:\n` +
-        `1. UN ejercicio principal de clase (ejercicioClase), no una lista de ejercicios sueltos. Debe tener:\n` +
+        `etc.) salvo que el propio tema o el nivel "Avanzado" ya las mencione explícitamente.\n` +
+        `\nNIVEL DE DETALLE OBLIGATORIO en "requerimientos" — cada ítem tiene que ser tan preciso y evaluable como ` +
+        `esto (no una descripción vaga):\n` +
+        `- Atributos: nombre exacto, tipo exacto, visibilidad exacta (ej. "atributo private String placa").\n` +
+        `- Constructor: qué parámetros recibe y con qué valores queda inicializado cada atributo (ej. "el costo ` +
+        `inicia en 0.0 porque todavía no se cobró").\n` +
+        `- Getters: nombre exacto de cada método — recordá la convención especial isXxx() (no getXxx()) para ` +
+        `atributos boolean.\n` +
+        `- Setters con validación: la condición EXACTA que valida y el mensaje de error LITERAL que imprime si no ` +
+        `se cumple (ej. 'si costo <= 0, imprimir "Error: el costo debe ser mayor a cero" y no modificar el atributo').\n` +
+        `- Si el ejercicio amerita un menú interactivo (ver nivel de dificultad), especificá el menú EXACTO en el ` +
+        `campo "menu" (un string por línea, tal como se imprime en consola) y detallá en "requerimientos" qué hace ` +
+        `cada opción paso a paso, incluyendo qué excepciones debe manejar cada una y con qué mensaje exacto — igual ` +
+        `que un enunciado real de examen. Si el ejercicio NO tiene menú, omití el campo "menu" por completo.\n` +
+        `\nGenerá:\n` +
+        `1. ${cantidadPractica} ejercicio(s) de práctica (ejerciciosPractica) — NO simplificaciones entre sí, cada ` +
+        `uno con dominio de negocio DISTINTO. Cada uno debe tener:\n` +
         `   - titulo: título breve del ejercicio.\n` +
         `   - contexto: un escenario de negocio realista y pertinente al tema (ej. para encapsulamiento, algo como ` +
         `"billetera digital" o "sistema de pedidos" — inventa uno que encaje con ${topic}, no uses un dominio genérico).\n` +
-        `   - requerimientos: lista paso a paso de qué debe crear el estudiante, acotada al alcance del tema (ver ` +
-        `regla de arriba), usando la sintaxis y convenciones del lenguaje/stack indicado.\n` +
+        `   - menu: opcional, ver regla de arriba.\n` +
+        `   - requerimientos: lista paso a paso con el nivel de detalle exigido arriba.\n` +
+        `   - checklist: lista de 5 a 10 preguntas de autoevaluación tipo "¿Por qué...?" o "¿Qué pasaría si...?" ` +
+        `sobre decisiones de diseño concretas del propio ejercicio (ej. "¿Por qué el atributo costo es private y ` +
+        `no public?") — NUNCA reveles la respuesta, son para que el estudiante se autoevalúe antes de comparar con ` +
+        `la solución.\n` +
         `   - conceptos: lista breve (3 a 6 ítems) de los conceptos técnicos concretos que el estudiante practica al ` +
         `resolver este ejercicio (ej. ["instanciación de objetos", "constructores", "getters/setters"]) — se usa ` +
         `para no repetir contenido ya practicado en semanas futuras.\n` +
-        `   - solucionDocente: el código COMPLETO que resuelve el ejercicio, en un campo separado del contexto y los ` +
-        `requerimientos (esta parte se oculta/muestra aparte en la interfaz, para poder proyectar solo el enunciado en clase).\n` +
-        `2. Opcionalmente HASTA 2 variantes para tarea en casa (ejerciciosTarea, máximo 2 — no más): mismo patrón completo (titulo, contexto, ` +
-        `requerimientos, solucionDocente — sin "conceptos", ese campo es solo del ejercicio de clase), cada una con un dominio de negocio DISTINTO al del ejercicio de clase y entre sí. ` +
-        `No son simplificaciones del ejercicio de clase — son ejercicios paralelos de dificultad equivalente.\n` +
+        `   - solucionDocente: el código COMPLETO (todas las clases/archivos necesarios) que resuelve el ejercicio, ` +
+        `en un campo separado del contexto y los requerimientos (esta parte se oculta/muestra aparte en la interfaz).\n` +
+        `2. ${cantidadTarea} variante(s) para tarea en casa (ejerciciosTarea) — mismo patrón completo (titulo, ` +
+        `contexto, menu opcional, requerimientos, checklist, solucionDocente — sin "conceptos", ese campo es solo de ` +
+        `ejerciciosPractica), cada una con un dominio de negocio DISTINTO a los de práctica y entre sí. No son ` +
+        `simplificaciones — son ejercicios paralelos de dificultad equivalente.\n` +
+        `Si ${cantidadPractica} o ${cantidadTarea} es 0, devolvé un array vacío para ese campo, no lo omitas.\n` +
         `Responde en español, SOLO en formato JSON sin markdown ni bloques de código: ` +
-        `{ "ejercicioClase": { "titulo": "", "contexto": "", "requerimientos": [], "conceptos": [], "solucionDocente": "" }, ` +
-        `"ejerciciosTarea": [{ "titulo": "", "contexto": "", "requerimientos": [], "solucionDocente": "" }] }`
+        `{ "ejerciciosPractica": [{ "titulo": "", "contexto": "", "menu": [], "requerimientos": [], "checklist": [], "conceptos": [], "solucionDocente": "" }], ` +
+        `"ejerciciosTarea": [{ "titulo": "", "contexto": "", "menu": [], "requerimientos": [], "checklist": [], "solucionDocente": "" }] }`
     );
 }
 
@@ -749,9 +789,20 @@ const EXAM_SYSTEM_PROMPT =
     `nunca un dominio genérico tipo "Sistema X".\n` +
     `- menu: texto EXACTO tal como se muestra en consola, mismas opciones en todas las ` +
     `versiones (solo cambia el nombre del dominio en el título del menú).\n` +
-    `- requisitos: instrucciones paso a paso, concretas y evaluables — nombres exactos de ` +
-    `clases/métodos/mensajes de error tal como debe imprimirlos el programa, nunca ` +
-    `descripciones vagas tipo "maneje los errores".\n` +
+    `- requisitos: instrucciones paso a paso, concretas y evaluables, con el mismo nivel de ` +
+    `precisión que un enunciado real de examen — nunca descripciones vagas tipo "maneje los ` +
+    `errores". Cada "detalle" tiene que especificar, según aplique:\n` +
+    `  · Atributos: nombre exacto, tipo exacto, visibilidad exacta (ej. "atributo private ` +
+    `String placa").\n` +
+    `  · Constructor: qué parámetros recibe y con qué valores queda inicializado cada ` +
+    `atributo.\n` +
+    `  · Getters: nombre exacto de cada método — convención isXxx() (no getXxx()) para ` +
+    `atributos boolean.\n` +
+    `  · Setters con validación: la condición EXACTA que valida y el mensaje de error LITERAL ` +
+    `que imprime si no se cumple (ej. 'si costo <= 0, imprimir "Error: el costo debe ser mayor ` +
+    `a cero" y no modificar el atributo').\n` +
+    `  · Excepciones a manejar: nombre exacto de cada excepción y el mensaje literal que debe ` +
+    `imprimir cada catch (usá "subitems" para listar casos especiales o excepciones puntuales).\n` +
     `- instrucciones: reglas generales del examen (herramientas permitidas, qué entregar, que ` +
     `el programa no debe cerrarse abruptamente ante una entrada inválida) — NUNCA menciones ` +
     `tiempo estimado ni puntaje ahí, esos los define el docente aparte.\n` +
@@ -816,6 +867,7 @@ export async function POST(request: NextRequest) {
             exerciseProjectContext, exercisePreviousTitles,
             unitAName, unitADescription, unitAWeekTitles, unitBName, unitBDescription,
             numVersiones, slides, instruction,
+            nivelDificultad, cantidadPractica, cantidadTarea,
         } = await request.json() as {
             type: string;
             topic?: string;
@@ -842,6 +894,9 @@ export async function POST(request: NextRequest) {
             numVersiones?: number;
             slides?: ClassKitContent['slides'];
             instruction?: string;
+            nivelDificultad?: string;
+            cantidadPractica?: number;
+            cantidadTarea?: number;
         };
 
         if (type === 'adjust_slides') {
@@ -970,11 +1025,20 @@ export async function POST(request: NextRequest) {
             if (!topic) {
                 return NextResponse.json({ error: 'Missing required field: topic' }, { status: 400 });
             }
+            const practica = cantidadPractica ?? 1;
+            const tarea = cantidadTarea ?? 2;
+            // Presupuesto escalado por cantidad total de ejercicios — cada uno trae código de
+            // solución completo (lo más pesado del payload), así que un pedido de "genera 5 de
+            // práctica y 5 de tarea" con el techo fijo de antes (32768) se truncaba seguido.
+            const exercisesMaxTokens = Math.min(65536, 8192 + (practica + tarea) * 6000);
             const result = await ai.models.generateContent({
                 model: 'gemini-3.7-flash',
-                contents: exercisesPrompt(topic, techStack?.trim() || undefined, courseMode, exerciseProjectContext, exercisePreviousTitles),
+                contents: exercisesPrompt(
+                    topic, techStack?.trim() || undefined, courseMode, exerciseProjectContext, exercisePreviousTitles,
+                    nivelDificultad?.trim() || 'intermedio', practica, tarea,
+                ),
                 config: {
-                    maxOutputTokens: MAX_OUTPUT_TOKENS.exercises ?? DEFAULT_MAX_OUTPUT_TOKENS,
+                    maxOutputTokens: exercisesMaxTokens,
                     thinkingConfig: LOW_LATENCY_THINKING,
                 },
             });

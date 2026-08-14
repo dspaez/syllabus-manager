@@ -4,20 +4,13 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import SlidesPresentation from '@/components/SlidesPresentation';
 import PDFViewer from '@/components/PDFViewer';
+import { parseExercisesContent, type Exercise, type ExercisesContent } from '@/lib/exercise/schema';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface Slide {
     title: string;
     points: string[];
-}
-
-interface Exercise {
-    titulo: string;
-    contexto: string;
-    requerimientos: string[];
-    // Ausente cuando el material se sirve a un visitante no autenticado: se omite server-side, nunca llega al cliente.
-    solucionDocente?: string;
 }
 
 interface Concept {
@@ -29,11 +22,6 @@ interface SlidesContent {
     slides: Slide[];
 }
 
-interface ExercisesContent {
-    ejercicioClase: Exercise;
-    ejerciciosTarea?: Exercise[];
-}
-
 interface GuideContent {
     introduction: string;
     concepts: Concept[];
@@ -41,7 +29,15 @@ interface GuideContent {
     summary: string;
 }
 
-type AIContent = SlidesContent | ExercisesContent | GuideContent;
+// Para la vista pública: solucionDocente se remueve FÍSICAMENTE (nunca solo undefined) antes
+// de que el contenido llegue al árbol de render — así nunca se serializa al HTML enviado a un
+// visitante no autenticado. Exercise (con solucionDocente requerido) es asignable acá sin
+// casteo porque el campo es opcional, no removido, en este tipo — se usa tal cual para admin.
+type DisplayExercise = Omit<Exercise, 'solucionDocente'> & { solucionDocente?: string };
+interface DisplayExercisesContent {
+    ejerciciosPractica: DisplayExercise[];
+    ejerciciosTarea: DisplayExercise[];
+}
 
 type MaterialRow = {
     id: string;
@@ -62,14 +58,6 @@ type MaterialRow = {
     } | null;
 };
 
-// ── Content-type detection ─────────────────────────────────────────────────
-
-function detectType(content: AIContent): 'slides' | 'exercises' | 'guide' {
-    if ('slides' in content) return 'slides';
-    if ('ejercicioClase' in content) return 'exercises';
-    return 'guide';
-}
-
 // ── Redacción de campos solo-docente ────────────────────────────────────────
 // Patrón reutilizable para cualquier tipo de contenido con una parte exclusiva
 // del docente (ej. rúbricas de exámenes en fases futuras): quita esos campos
@@ -81,10 +69,10 @@ function omitFields<T extends object, K extends keyof T>(obj: T, keys: K[]): Omi
     return copy;
 }
 
-function redactExercisesForPublic(data: ExercisesContent): ExercisesContent {
+function redactExercisesForPublic(data: ExercisesContent): DisplayExercisesContent {
     return {
-        ejercicioClase: omitFields(data.ejercicioClase, ['solucionDocente']),
-        ejerciciosTarea: data.ejerciciosTarea?.map((ex) => omitFields(ex, ['solucionDocente'])),
+        ejerciciosPractica: data.ejerciciosPractica.map((ex) => omitFields(ex, ['solucionDocente'])),
+        ejerciciosTarea: data.ejerciciosTarea.map((ex) => omitFields(ex, ['solucionDocente'])),
     };
 }
 
@@ -129,7 +117,7 @@ function FileDownloadView({ url, name, type, accentColor }: { url: string; name:
 
 // ── Renderers ─────────────────────────────────────────────────────────────
 
-function ExerciseCard({ ex, label, accentColor }: { ex: Exercise; label: string; accentColor: string }) {
+function ExerciseCard({ ex, label, accentColor }: { ex: DisplayExercise; label: string; accentColor: string }) {
     return (
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
             {/* Header with subject accent color */}
@@ -145,6 +133,13 @@ function ExerciseCard({ ex, label, accentColor }: { ex: Exercise; label: string;
                 {/* Contexto */}
                 <p className="text-sm text-gray-800 leading-relaxed">{ex.contexto}</p>
 
+                {/* Menú de consola */}
+                {ex.menu && ex.menu.length > 0 && (
+                    <div className="rounded-lg bg-slate-100 px-3 py-2.5 font-mono text-xs text-slate-700 whitespace-pre-wrap">
+                        {ex.menu.join('\n')}
+                    </div>
+                )}
+
                 {/* Requerimientos */}
                 {ex.requerimientos.length > 0 && (
                     <div>
@@ -155,6 +150,18 @@ function ExerciseCard({ ex, label, accentColor }: { ex: Exercise; label: string;
                                     <span className="mt-1.5 shrink-0 h-1.5 w-1.5 rounded-full bg-gray-300" />
                                     {req}
                                 </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                {/* Checklist de autoevaluación */}
+                {ex.checklist && ex.checklist.length > 0 && (
+                    <div>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Checklist de autoevaluación</p>
+                        <ul className="space-y-1">
+                            {ex.checklist.map((q, j) => (
+                                <li key={j} className="text-sm text-gray-700">☐ {q}</li>
                             ))}
                         </ul>
                     </div>
@@ -180,15 +187,26 @@ function ExerciseCard({ ex, label, accentColor }: { ex: Exercise; label: string;
     );
 }
 
-function ExercisesView({ data, accentColor }: { data: ExercisesContent; accentColor: string }) {
+function ExercisesView({ data, accentColor }: { data: DisplayExercisesContent; accentColor: string }) {
     return (
         <div className="space-y-8">
-            <section>
-                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Ejercicio de clase</h2>
-                <ExerciseCard ex={data.ejercicioClase} label="Clase" accentColor={accentColor} />
-            </section>
+            {data.ejerciciosPractica.length > 0 && (
+                <section>
+                    <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Ejercicios de práctica</h2>
+                    <div className="space-y-5">
+                        {data.ejerciciosPractica.map((ex, i) => (
+                            <ExerciseCard
+                                key={i}
+                                ex={ex}
+                                label={data.ejerciciosPractica.length > 1 ? `Práctica ${i + 1}` : 'Ejercicio de práctica'}
+                                accentColor={accentColor}
+                            />
+                        ))}
+                    </div>
+                </section>
+            )}
 
-            {data.ejerciciosTarea && data.ejerciciosTarea.length > 0 && (
+            {data.ejerciciosTarea.length > 0 && (
                 <section>
                     <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Tarea en casa</h2>
                     <div className="space-y-5">
@@ -310,28 +328,45 @@ export default async function MaterialPage({
     const subjectColor = m.weeks?.units?.subjects?.color || '#185FA5';
     const subjectName = m.weeks?.units?.subjects?.name ?? null;
 
-    // Parse AI-generated content
-    let content: AIContent | null = null;
+    // Parse AI-generated content. Los ejercicios se intentan primero (parseExercisesContent
+    // reconoce tanto el formato nuevo con arrays como el legado {ejercicioClase} guardado en
+    // producción); si no matchea, se distingue slides/guide por forma del JSON crudo.
+    let contentType: 'exercises' | 'slides' | 'guide' | null = null;
+    let exercisesContent: DisplayExercisesContent | null = null;
+    let slidesContent: SlidesContent | null = null;
+    let guideContent: GuideContent | null = null;
     let parseError = false;
+
     if (m.description) {
-        try {
-            content = JSON.parse(m.description) as AIContent;
-        } catch {
-            parseError = true;
+        const parsedExercises = parseExercisesContent(m.description);
+        if (parsedExercises) {
+            contentType = 'exercises';
+            // Redacta solucionDocente ANTES de que el contenido llegue al árbol de render —
+            // para un visitante no autenticado, el campo nunca existe en el objeto serializado a HTML.
+            exercisesContent = isAdmin ? parsedExercises : redactExercisesForPublic(parsedExercises);
+        } else {
+            try {
+                const raw: unknown = JSON.parse(m.description);
+                if (raw && typeof raw === 'object' && Array.isArray((raw as SlidesContent).slides)) {
+                    contentType = 'slides';
+                    slidesContent = raw as SlidesContent;
+                } else if (raw && typeof raw === 'object') {
+                    contentType = 'guide';
+                    guideContent = raw as GuideContent;
+                } else {
+                    parseError = true;
+                }
+            } catch {
+                parseError = true;
+            }
         }
     }
 
-    const contentType = content ? detectType(content) : null;
-
-    // Redacta solucionDocente ANTES de que el contenido llegue al árbol de render —
-    // para un visitante no autenticado, el campo nunca existe en el objeto que se serializa a HTML.
-    if (content && contentType === 'exercises' && !isAdmin) {
-        content = redactExercisesForPublic(content as ExercisesContent);
-    }
+    const hasContent = contentType !== null;
 
     // Archivo real en Storage (upload manual o generado por IA, ej. class_kit) → viewer o
     // descarga según el tipo, sin intentar parsear JSON que no existe para estos materiales.
-    if (m.file_url && !content) {
+    if (m.file_url && !hasContent) {
         if (m.type === 'pdf') {
             return <PDFViewer url={m.file_url} name={m.name} />;
         }
@@ -345,10 +380,10 @@ export default async function MaterialPage({
     }
 
     // Slides → full-screen presentation mode
-    if (contentType === 'slides') {
+    if (contentType === 'slides' && slidesContent) {
         return (
             <SlidesPresentation
-                slides={(content as SlidesContent).slides}
+                slides={slidesContent.slides}
                 name={m.name}
                 subjectColor={subjectColor}
             />
@@ -419,17 +454,17 @@ export default async function MaterialPage({
                     </div>
                 )}
 
-                {!content && !parseError && (
+                {!hasContent && !parseError && (
                     <div className="text-center py-24 text-gray-400">
                         <p className="text-lg font-medium">Este material no tiene contenido.</p>
                     </div>
                 )}
 
-                {content && contentType === 'exercises' && (
-                    <ExercisesView data={content as ExercisesContent} accentColor={subjectColor} />
+                {contentType === 'exercises' && exercisesContent && (
+                    <ExercisesView data={exercisesContent} accentColor={subjectColor} />
                 )}
-                {content && contentType === 'guide' && (
-                    <GuideView data={content as GuideContent} accentColor={subjectColor} />
+                {contentType === 'guide' && guideContent && (
+                    <GuideView data={guideContent} accentColor={subjectColor} />
                 )}
             </main>
         </div>

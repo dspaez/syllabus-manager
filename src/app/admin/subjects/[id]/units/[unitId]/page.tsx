@@ -13,6 +13,7 @@ import GenerateClassKit from '@/components/GenerateClassKit';
 import GenerateExam from '@/components/GenerateExam';
 import ToggleDictada from '@/components/ToggleDictada';
 import { getMaterialBadge } from '@/lib/materialBadge';
+import { parseExercisesContent } from '@/lib/exercise/schema';
 
 type Material = {
     id: string;
@@ -206,21 +207,16 @@ export default async function UnitPage({
     }
 
     // Contenido REAL de esta misma semana para anclar el class kit — nunca se mezclan los dos
-    // flujos: 'topics' usa el ejercicio de clase ya generado (solo ejercicioClase, nunca las
-    // variantes de ejerciciosTarea — esas son para que el estudiante las resuelva solo, no para
-    // que la guía técnica las precocine); 'project' usa el documento técnico del subject. Si no
-    // existe todavía el contenido real correspondiente, queda `null` y el prompt no inventa que
-    // sí lo hay — mismo patrón que "clase anterior".
+    // flujos: 'topics' usa el primer ejercicio de práctica ya generado (nunca las variantes de
+    // ejerciciosTarea — esas son para que el estudiante las resuelva solo, no para que la guía
+    // técnica las precocine); 'project' usa el documento técnico del subject. Si no existe
+    // todavía el contenido real correspondiente, queda `null` y el prompt no inventa que sí lo
+    // hay — mismo patrón que "clase anterior".
     function currentExerciseContextFor(week: Week): string | null {
         for (const m of week.materials ?? []) {
-            if (m.source !== 'ai' || !m.description) continue;
-            let parsed: { ejercicioClase?: { titulo?: string; contexto?: string; requerimientos?: string[]; solucionDocente?: string } };
-            try {
-                parsed = JSON.parse(m.description);
-            } catch {
-                continue;
-            }
-            const ej = parsed.ejercicioClase;
+            if (m.source !== 'ai') continue;
+            const parsed = parseExercisesContent(m.description);
+            const ej = parsed?.ejerciciosPractica[0];
             if (!ej) continue;
             return [
                 `Título: ${ej.titulo ?? ''}`,
@@ -278,13 +274,10 @@ export default async function UnitPage({
     // semana siguiente conceptos (constructores, getters, etc.) que ya se habían practicado.
     function exerciseConceptsFor(w: { materials: { source: string | null; description: string | null }[] | null }): string[] {
         for (const m of w.materials ?? []) {
-            if (m.source !== 'ai' || !m.description) continue;
-            try {
-                const parsed = JSON.parse(m.description) as { ejercicioClase?: { conceptos?: string[] } };
-                if (parsed.ejercicioClase?.conceptos?.length) return parsed.ejercicioClase.conceptos;
-            } catch {
-                continue;
-            }
+            if (m.source !== 'ai') continue;
+            const parsed = parseExercisesContent(m.description);
+            const conceptos = parsed?.ejerciciosPractica[0]?.conceptos;
+            if (conceptos?.length) return conceptos;
         }
         return [];
     }
