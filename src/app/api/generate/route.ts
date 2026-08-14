@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { NextRequest, NextResponse } from 'next/server';
@@ -12,9 +12,10 @@ const techStackContext = (techStack?: string) =>
           `Todo código, sintaxis y ejemplos deben usar ese stack — no asumas otro lenguaje o tecnología.\n`
         : '';
 
-// gemini-2.5-flash soporta hasta 65536 tokens de salida. El presupuesto se comparte con los
-// "thinking tokens" internos del modelo (a veces >90% del total), así que el JSON visible
-// puede truncarse mucho antes de acercarse al límite nominal si el tipo pide contenido extenso.
+// gemini-3.7-flash soporta hasta 65536 tokens de salida. maxOutputTokens sigue compartiéndose
+// con los tokens de pensamiento internos del modelo incluso con thinkingLevel LOW (no los
+// elimina, solo acota cuánto piensa) — el JSON visible puede truncarse antes del límite
+// nominal si el tipo pide contenido extenso.
 const DEFAULT_MAX_OUTPUT_TOKENS = 8192;
 const MAX_OUTPUT_TOKENS: Partial<Record<string, number>> = {
     // ejercicioClase + variantes de tarea con código de solución completo son bastante más
@@ -153,7 +154,9 @@ function exercisesPrompt(
     const contextBlock = courseMode === 'project' && exerciseProjectContext?.trim()
         ? `\nContexto real del proyecto hasta este punto del curso (arquitectura y convenciones ya construidas — el ejercicio tiene que ser coherente con esto, un dominio/stack paralelo NO):\n${exerciseProjectContext.trim()}\n`
         : courseMode === 'topics' && exercisePreviousTitles && exercisePreviousTitles.length > 0
-        ? `\nTemas y ejercicios ya dados en semanas anteriores (no repitas los conceptos ya practicados ahí, construí sobre ellos cuando aplique):\n- ${exercisePreviousTitles.join('\n- ')}\n`
+        ? `\nTemas y ejercicios de semanas anteriores marcadas por el docente como YA DICTADAS (nunca semanas ` +
+          `solo planificadas o con título cargado pero sin dar todavía — esas quedan afuera de esta lista a ` +
+          `propósito): no repitas los conceptos ya practicados ahí, construí sobre ellos cuando aplique:\n- ${exercisePreviousTitles.join('\n- ')}\n`
         : '';
     return (
         `Eres un docente universitario diseñando el ejercicio principal de una clase de programación sobre ${topic}. ` +
@@ -221,15 +224,21 @@ function technicalDocPrompt(subjectName: string, weekTopic: string, previousDocu
     );
 }
 
-// TODO(Fase 2): mover este tipo a Claude (claude-sonnet-5) cuando se integre @anthropic-ai/sdk.
+// thinkingLevel HIGH a propósito: esta llamada tiene que analizar el documento técnico
+// ACUMULADO completo (arquitectura + modelo de datos + historial de tareas) antes de decidir
+// cómo extenderlo de forma consistente semana a semana — el análisis profundo importa más acá
+// que la latencia, a diferencia de exercises/curriculum/guide (ver LOW más abajo).
 async function generateTechnicalDoc(subjectName: string, weekTopic: string, previousDocument?: string, techStack?: string): Promise<string> {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-    const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        generationConfig: { maxOutputTokens: 16384 },
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+    const result = await ai.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents: technicalDocPrompt(subjectName, weekTopic, previousDocument, techStack),
+        config: {
+            maxOutputTokens: 16384,
+            thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+        },
     });
-    const result = await model.generateContent(technicalDocPrompt(subjectName, weekTopic, previousDocument, techStack));
-    let text = result.response.text().trim();
+    let text = (result.text ?? '').trim();
     // Por si el modelo envuelve la respuesta en un bloque de código
     text = text.replace(/^```(?:markdown|md)?\n/, '').replace(/\n```$/, '').trim();
     return text;
@@ -923,28 +932,35 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Missing required fields: type and topic' }, { status: 400 });
         }
 
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+        // thinkingLevel LOW en curriculum/exercises/guide a propósito — "comportamiento por
+        // defecto sin latencia extra": son generaciones de un solo tiro donde la velocidad
+        // importa más que el razonamiento profundo (a diferencia de generateTechnicalDoc, que
+        // usa HIGH porque analiza el documento acumulado completo antes de extenderlo).
+        const LOW_LATENCY_THINKING = { thinkingLevel: ThinkingLevel.LOW };
 
         if (type === 'curriculum') {
-            const model = genAI.getGenerativeModel({
-                model: 'gemini-2.5-flash',
-                generationConfig: { maxOutputTokens: 8192 },
-                // @ts-expect-error — googleSearch is valid at runtime but missing from SDK types
-                tools: [{ googleSearch: {} }],
-            });
             const prompt =
                 `Eres un experto en educación universitaria. Busca en internet las tendencias más actuales de ${topic} en 2026. ` +
                 `Genera un plan curricular de 16 semanas para una asignatura universitaria sobre ${topic}, agrupado en unidades temáticas lógicas. ` +
                 `Responde SOLO en JSON sin markdown: ` +
                 `{ "summary": "máximo 3 líneas sobre tendencias actuales", "units": [{ "name": "nombre de la unidad", "order": 1, "weeks": [{ "number": 1, "title": "título conciso", "topics": ["tema1", "tema2"], "justification": "máximo 1 línea" }] }] }`;
-            const result = await model.generateContent(prompt);
-            const text = result.response.text();
+            const result = await ai.models.generateContent({
+                model: 'gemini-3.7-flash',
+                contents: prompt,
+                config: {
+                    maxOutputTokens: 8192,
+                    thinkingConfig: LOW_LATENCY_THINKING,
+                    tools: [{ googleSearch: {} }],
+                },
+            });
+            const text = result.text ?? '';
 
             let parsed;
             try {
                 parsed = repairTruncatedJson(text);
             } catch (err) {
-                console.error(`[generate:curriculum] parseo falló — finishReason=${result.response.candidates?.[0]?.finishReason}, length=${text.length}`);
+                console.error(`[generate:curriculum] parseo falló — finishReason=${result.candidates?.[0]?.finishReason}, length=${text.length}`);
                 throw err;
             }
             return NextResponse.json(parsed);
@@ -954,20 +970,21 @@ export async function POST(request: NextRequest) {
             if (!topic) {
                 return NextResponse.json({ error: 'Missing required field: topic' }, { status: 400 });
             }
-            const model = genAI.getGenerativeModel({
-                model: 'gemini-2.5-flash',
-                generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS.exercises ?? DEFAULT_MAX_OUTPUT_TOKENS },
+            const result = await ai.models.generateContent({
+                model: 'gemini-3.7-flash',
+                contents: exercisesPrompt(topic, techStack?.trim() || undefined, courseMode, exerciseProjectContext, exercisePreviousTitles),
+                config: {
+                    maxOutputTokens: MAX_OUTPUT_TOKENS.exercises ?? DEFAULT_MAX_OUTPUT_TOKENS,
+                    thinkingConfig: LOW_LATENCY_THINKING,
+                },
             });
-            const result = await model.generateContent(
-                exercisesPrompt(topic, techStack?.trim() || undefined, courseMode, exerciseProjectContext, exercisePreviousTitles),
-            );
-            const text = result.response.text();
+            const text = result.text ?? '';
 
             let parsed;
             try {
                 parsed = repairTruncatedJson(text);
             } catch (err) {
-                console.error(`[generate:exercises] parseo falló — finishReason=${result.response.candidates?.[0]?.finishReason}, length=${text.length}`);
+                console.error(`[generate:exercises] parseo falló — finishReason=${result.candidates?.[0]?.finishReason}, length=${text.length}`);
                 throw err;
             }
             return NextResponse.json(parsed);
@@ -978,19 +995,21 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: `Invalid type. Must be one of: curriculum, exercises, ${Object.keys(PROMPTS).join(', ')}` }, { status: 400 });
         }
 
-        const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
-            generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS[type] ?? DEFAULT_MAX_OUTPUT_TOKENS }
+        const result = await ai.models.generateContent({
+            model: 'gemini-3.7-flash',
+            contents: promptFn(topic, techStack?.trim() || undefined),
+            config: {
+                maxOutputTokens: MAX_OUTPUT_TOKENS[type] ?? DEFAULT_MAX_OUTPUT_TOKENS,
+                thinkingConfig: LOW_LATENCY_THINKING,
+            },
         });
-
-        const result = await model.generateContent(promptFn(topic, techStack?.trim() || undefined));
-        const text = result.response.text();
+        const text = result.text ?? '';
 
         let parsed;
         try {
             parsed = repairTruncatedJson(text);
         } catch (err) {
-            console.error(`[generate:${type}] parseo falló — finishReason=${result.response.candidates?.[0]?.finishReason}, length=${text.length}`);
+            console.error(`[generate:${type}] parseo falló — finishReason=${result.candidates?.[0]?.finishReason}, length=${text.length}`);
             throw err;
         }
 
