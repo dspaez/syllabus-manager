@@ -16,11 +16,11 @@ const ExamVersionSchema = z.object({
     contexto: z.string().describe('Escenario de negocio de esta versión — dominio distinto al de las demás versiones, mismo patrón estructural.'),
     menu: z.array(z.string()).describe('Líneas EXACTAS del menú que el programa debe mostrar, en orden — mismas opciones que las demás versiones, solo cambia el dominio.'),
     requisitos: z.array(RequisitoSchema),
-    entregable: z.string().describe('Qué debe entregar el estudiante exactamente, ej. nombre del archivo .java.'),
+    entregable: z.string().describe('Qué debe entregar el estudiante exactamente, ej. nombre del archivo fuente con la extensión del lenguaje del curso.'),
 });
 
 export const ExamSchema = z.object({
-    titulo: z.string().describe('Título de la evaluación, ej. "Evaluación Práctica: Arreglos Dinámicos (ArrayList)".'),
+    titulo: z.string().describe('Título de la evaluación, ej. "Evaluación Práctica: Listas y Manejo de Excepciones".'),
     instrucciones: z.array(z.string()).describe('Reglas generales del examen (herramientas permitidas, qué entregar, manejo de errores esperado) — sin repetir tiempo/puntaje, esos van aparte.'),
     versiones: z.array(ExamVersionSchema),
 });

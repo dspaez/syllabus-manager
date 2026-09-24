@@ -148,11 +148,47 @@ const DIFFICULTY_GUIDANCE: Record<string, string> = {
     basico: 'conceptos fundamentales del tema únicamente, pocos pasos, SIN combinar varias técnicas a la vez ' +
         'ni agregar un menú interactivo salvo que el tema mismo lo requiera.',
     intermedio: 'combina 2 o 3 técnicas del tema en un solo ejercicio, incluye al menos una validación o caso ' +
-        'especial real, y puede tener un menú interactivo simple (do-while) con pocas opciones.',
+        'especial real, y puede tener un menú interactivo simple (bucle que se repite hasta elegir salir) con pocas opciones.',
     avanzado: 'integra el tema con conceptos YA vistos en semanas anteriores (ver contexto más abajo si lo hay), ' +
         'incluye varias validaciones/casos especiales reales, y un flujo de programa más completo — normalmente ' +
-        'un menú interactivo (do-while) con varias opciones que ejercitan distintas partes de la arquitectura.',
+        'un menú interactivo (bucle que se repite hasta elegir salir) con varias opciones que ejercitan distintas ' +
+        'partes de la arquitectura.',
 };
+
+// Los ejemplos de los prompts de ejercicios/examen estaban escritos en Java (private String,
+// isXxx(), do-while, InputMismatchException) y empujaban al modelo a Java o a un Python
+// "javificado" aunque el stack de la materia fuera otro (POO se dicta en Python). Los ejemplos
+// ahora son neutrales y esta regla traduce cada convención al lenguaje real del curso.
+function languageConventionsRule(subjectName: string | undefined, techStack: string | undefined): string {
+    const languageSource = techStack?.trim()
+        ? `el lenguaje del stack indicado ("${techStack.trim()}")`
+        : subjectName?.trim()
+        ? `el lenguaje que corresponde a la materia "${subjectName.trim()}" — si el nombre no lo deja claro, ` +
+          `elegí el más coherente con el tema y nombralo explícitamente en el contexto; nunca asumas Java por defecto`
+        : `el lenguaje más coherente con el tema — nombralo explícitamente en el contexto; nunca asumas Java por defecto`;
+    return (
+        `
+CONVENCIONES DEL LENGUAJE: todo el código, los nombres y las convenciones se escriben en ${languageSource}, ` +
+        `de forma idiomática para ese lenguaje — nunca traslades convenciones de otro lenguaje. Los ejemplos de ` +
+        `abajo son ilustrativos; tradúcelos a ese lenguaje. En particular:
+` +
+        `- Visibilidad/encapsulamiento: usá el mecanismo real del lenguaje (ej. Java/C#: private/public; Python: ` +
+        `prefijo _ o __ y @property — Python no tiene modificadores private/public).
+` +
+        `- Tipos: indicá el tipo exacto con la sintaxis del lenguaje (ej. Java: String/double; Python: str/float ` +
+        `como type hints).
+` +
+        `- Accesores de booleanos y nombres de métodos: seguí la convención del lenguaje (ej. Java: isActivo(); ` +
+        `Python: propiedad esta_activo o método en snake_case).
+` +
+        `- Menú interactivo: el bucle idiomático del lenguaje (ej. Java/C#: do-while; Python: while True con break ` +
+        `— Python no tiene do-while).
+` +
+        `- Excepciones: las que ese lenguaje realmente lanza en cada caso (ej. entrada no numérica — Java: ` +
+        `InputMismatchException/NumberFormatException; Python: ValueError), nunca nombres de otro lenguaje.
+`
+    );
+}
 
 // Separado del mapa genérico PROMPTS (a diferencia de slides/guide) porque necesita contexto
 // real por course_mode — mismo mecanismo que class_kit, nunca mezclados: 'project' ancla al
@@ -161,6 +197,7 @@ const DIFFICULTY_GUIDANCE: Record<string, string> = {
 // conceptos. Si no hay contexto real, no se inventa que sí existe — mismo principio de siempre.
 function exercisesPrompt(
     topic: string,
+    subjectName: string | undefined,
     techStack: string | undefined,
     courseMode: string | null | undefined,
     exerciseProjectContext: string | undefined,
@@ -179,10 +216,12 @@ function exercisesPrompt(
     const difficultyKey = DIFFICULTY_GUIDANCE[nivelDificultad] ? nivelDificultad : 'intermedio';
 
     return (
-        `Eres un docente universitario diseñando ejercicios de práctica de una clase de programación sobre ${topic}, ` +
-        `con el mismo nivel de precisión y detalle que un docente experimentado escribiría para un examen o guía de ` +
+        `Eres un docente universitario diseñando ejercicios de práctica de una clase de programación sobre ${topic}` +
+        (subjectName?.trim() ? `, de la materia "${subjectName.trim()}"` : '') +
+        `, con el mismo nivel de precisión y detalle que un docente experimentado escribiría para un examen o guía de ` +
         `repaso — nunca genérico ni superficial.\n` +
         techStackContext(techStack) +
+        languageConventionsRule(subjectName, techStack) +
         contextBlock +
         `\nNivel de dificultad pedido: ${DIFFICULTY_LABELS[difficultyKey]}. ${DIFFICULTY_GUIDANCE[difficultyKey]}\n` +
         `\nIMPORTANTE sobre el alcance: el ejercicio debe practicar EXACTAMENTE lo que describe "${topic}", ni más ni ` +
@@ -191,11 +230,12 @@ function exercisesPrompt(
         `etc.) salvo que el propio tema o el nivel "Avanzado" ya las mencione explícitamente.\n` +
         `\nNIVEL DE DETALLE OBLIGATORIO en "requerimientos" — cada ítem tiene que ser tan preciso y evaluable como ` +
         `esto (no una descripción vaga):\n` +
-        `- Atributos: nombre exacto, tipo exacto, visibilidad exacta (ej. "atributo private String placa").\n` +
+        `- Atributos: nombre exacto, tipo exacto y visibilidad/encapsulamiento según el lenguaje (ej. "atributo ` +
+        `placa de tipo texto, privado").\n` +
         `- Constructor: qué parámetros recibe y con qué valores queda inicializado cada atributo (ej. "el costo ` +
         `inicia en 0.0 porque todavía no se cobró").\n` +
-        `- Getters: nombre exacto de cada método — recordá la convención especial isXxx() (no getXxx()) para ` +
-        `atributos boolean.\n` +
+        `- Getters/accesores: nombre exacto de cada uno, siguiendo la convención del lenguaje (incluida la de ` +
+        `atributos booleanos — ver CONVENCIONES DEL LENGUAJE).\n` +
         `- Setters con validación: la condición EXACTA que valida y el mensaje de error LITERAL que imprime si no ` +
         `se cumple (ej. 'si costo <= 0, imprimir "Error: el costo debe ser mayor a cero" y no modificar el atributo').\n` +
         `- Si el ejercicio amerita un menú interactivo (ver nivel de dificultad), especificá el menú EXACTO en el ` +
@@ -211,8 +251,8 @@ function exercisesPrompt(
         `   - menu: opcional, ver regla de arriba.\n` +
         `   - requerimientos: lista paso a paso con el nivel de detalle exigido arriba.\n` +
         `   - checklist: lista de 5 a 10 preguntas de autoevaluación tipo "¿Por qué...?" o "¿Qué pasaría si...?" ` +
-        `sobre decisiones de diseño concretas del propio ejercicio (ej. "¿Por qué el atributo costo es private y ` +
-        `no public?") — NUNCA reveles la respuesta, son para que el estudiante se autoevalúe antes de comparar con ` +
+        `sobre decisiones de diseño concretas del propio ejercicio (ej. "¿Por qué el atributo costo no se puede ` +
+        `modificar directamente desde fuera de la clase?") — NUNCA reveles la respuesta, son para que el estudiante se autoevalúe antes de comparar con ` +
         `la solución.\n` +
         `   - conceptos: lista breve (3 a 6 ítems) de los conceptos técnicos concretos que el estudiante practica al ` +
         `resolver este ejercicio (ej. ["instanciación de objetos", "constructores", "getters/setters"]) — se usa ` +
@@ -781,8 +821,8 @@ const EXAM_SYSTEM_PROMPT =
     `Reglas estrictas:\n` +
     `- TODAS las versiones deben tener EXACTAMENTE la misma estructura: mismo número de ` +
     `requisitos, mismo nivel de dificultad, mismos conceptos técnicos evaluados (ej. si una ` +
-    `versión pide manejar InputMismatchException e IndexOutOfBoundsException con finally, ` +
-    `TODAS las versiones piden exactamente esas mismas excepciones) — solo cambia el dominio ` +
+    `versión pide manejar una entrada no numérica y un índice fuera de rango con un bloque de ` +
+    `limpieza final, TODAS las versiones piden exactamente esas mismas excepciones) — solo cambia el dominio ` +
     `de negocio (nombres de clase, atributos, mensajes) entre versiones, nunca la dificultad ` +
     `ni el alcance técnico.\n` +
     `- Cada versión necesita un dominio de negocio distinto y realista (ej. consultorio, ` +
@@ -793,16 +833,16 @@ const EXAM_SYSTEM_PROMPT =
     `- requisitos: instrucciones paso a paso, concretas y evaluables, con el mismo nivel de ` +
     `precisión que un enunciado real de examen — nunca descripciones vagas tipo "maneje los ` +
     `errores". Cada "detalle" tiene que especificar, según aplique:\n` +
-    `  · Atributos: nombre exacto, tipo exacto, visibilidad exacta (ej. "atributo private ` +
-    `String placa").\n` +
+    `  · Atributos: nombre exacto, tipo exacto y visibilidad/encapsulamiento según el lenguaje ` +
+    `(ej. "atributo placa de tipo texto, privado").\n` +
     `  · Constructor: qué parámetros recibe y con qué valores queda inicializado cada ` +
     `atributo.\n` +
-    `  · Getters: nombre exacto de cada método — convención isXxx() (no getXxx()) para ` +
-    `atributos boolean.\n` +
+    `  · Getters/accesores: nombre exacto de cada uno, siguiendo la convención del lenguaje ` +
+    `(incluida la de atributos booleanos).\n` +
     `  · Setters con validación: la condición EXACTA que valida y el mensaje de error LITERAL ` +
     `que imprime si no se cumple (ej. 'si costo <= 0, imprimir "Error: el costo debe ser mayor ` +
     `a cero" y no modificar el atributo').\n` +
-    `  · Excepciones a manejar: nombre exacto de cada excepción y el mensaje literal que debe ` +
+    `  · Excepciones a manejar: nombre exacto de cada excepción REAL del lenguaje y el mensaje literal que debe ` +
     `imprimir cada catch (usá "subitems" para listar casos especiales o excepciones puntuales).\n` +
     `- instrucciones: reglas generales del examen (herramientas permitidas, qué entregar, que ` +
     `el programa no debe cerrarse abruptamente ante una entrada inválida) — NUNCA menciones ` +
@@ -827,6 +867,7 @@ async function generateExam(params: {
     ];
     if (params.subjectDescription?.trim()) parts.push(`Descripción de la materia: ${params.subjectDescription.trim()}.`);
     if (params.techStack?.trim()) parts.push(`Stack tecnológico: ${params.techStack.trim()}.`);
+    parts.push(languageConventionsRule(params.subjectName, params.techStack).trim());
     if (params.exercisePreviousTitles && params.exercisePreviousTitles.length > 0) {
         parts.push(`Temas ya dictados en semanas anteriores (el examen debe evaluar contenido de esta lista o del tema indicado, nunca algo no visto): ${params.exercisePreviousTitles.join(', ')}.`);
     }
@@ -1038,7 +1079,7 @@ export async function POST(request: NextRequest) {
             const result = await ai.models.generateContent({
                 model: 'gemini-3.7-flash',
                 contents: exercisesPrompt(
-                    topic, techStack?.trim() || undefined, courseMode, exerciseProjectContext, exercisePreviousTitles,
+                    topic, subjectName?.trim() || undefined, techStack?.trim() || undefined, courseMode, exerciseProjectContext, exercisePreviousTitles,
                     nivelDificultad?.trim() || 'intermedio', practica, tarea,
                 ),
                 config: {

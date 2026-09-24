@@ -202,6 +202,7 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
                     topic: topic.trim(),
                     techStack: techStack ?? undefined,
                     ...(type === 'exercises' ? {
+                        subjectName,
                         courseMode: courseMode ?? undefined,
                         exerciseProjectContext: courseMode === 'project' ? (exerciseProjectContext ?? undefined) : undefined,
                         exercisePreviousTitles: courseMode === 'topics' ? exercisePreviousTitles : undefined,

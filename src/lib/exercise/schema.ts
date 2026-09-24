@@ -5,7 +5,7 @@
 export interface Exercise {
     titulo: string;
     contexto: string;
-    /** Líneas EXACTAS del menú de consola, si el ejercicio tiene uno interactivo (do-while). */
+    /** Líneas EXACTAS del menú de consola, si el ejercicio tiene uno interactivo. */
     menu?: string[];
     requerimientos: string[];
     /** Preguntas de autoevaluación — nunca revelan la respuesta, seguras para el estudiante. */
