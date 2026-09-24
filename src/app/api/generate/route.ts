@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { SlidesOnlySchema, GuionDocenteSchema, GuiaTecnicaSchema, ExtraSlidesSchema, ICON_NAMES, type ClassKitContent, type ExtraSlideEntry, type Slide } from '@/lib/classKit/schema';
 import { ExamSchema, type Exam } from '@/lib/exam/schema';
+import { requireUser } from '@/utils/supabase/requireUser';
 
 const techStackContext = (techStack?: string) =>
     techStack?.trim()
@@ -858,6 +859,9 @@ async function generateExam(params: {
 }
 
 export async function POST(request: NextRequest) {
+    const auth = await requireUser();
+    if (auth.response) return auth.response;
+
     try {
         const {
             type, topic, subjectName, weekTopic,

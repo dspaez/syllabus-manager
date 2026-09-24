@@ -1,10 +1,13 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { requireUser } from '@/utils/supabase/requireUser';
 import { renderExercisePdf } from '@/lib/classKit/renderExercisePdf';
 import type { Exercise } from '@/lib/exercise/schema';
 
 export async function POST(request: NextRequest) {
+    const auth = await requireUser();
+    if (auth.response) return auth.response;
+    const { supabase } = auth;
+
     try {
         const body = await request.json() as {
             ejerciciosPractica?: Exercise[];
@@ -32,7 +35,6 @@ export async function POST(request: NextRequest) {
         });
 
         const path = `${weekId}/${Date.now()}-ejercicios.pdf`;
-        const supabase = createClient(await cookies());
         const { error: uploadError } = await supabase.storage
             .from('materials')
             .upload(path, buffer, { contentType: 'application/pdf' });

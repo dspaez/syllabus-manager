@@ -1,10 +1,13 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { requireUser } from '@/utils/supabase/requireUser';
 import { ExamSchema } from '@/lib/exam/schema';
 import { renderExamPdf } from '@/lib/exam/renderExamPdf';
 
 export async function POST(request: NextRequest) {
+    const auth = await requireUser();
+    if (auth.response) return auth.response;
+    const { supabase } = auth;
+
     try {
         const body = await request.json() as {
             exam?: unknown;
@@ -31,7 +34,6 @@ export async function POST(request: NextRequest) {
         const buffer = renderExamPdf(parsed.data, subjectName, tiempoEstimado, puntajeTotal, accentColor ?? undefined);
 
         const path = `${weekId}/${Date.now()}-examen.pdf`;
-        const supabase = createClient(await cookies());
         const { error: uploadError } = await supabase.storage
             .from('materials')
             .upload(path, buffer, { contentType: 'application/pdf' });

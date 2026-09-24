@@ -1,6 +1,5 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { requireUser } from '@/utils/supabase/requireUser';
 import { renderDocenteSolutionPdf } from '@/lib/exercise/renderDocenteSolutionPdf';
 import type { Exercise } from '@/lib/exercise/schema';
 
@@ -10,6 +9,10 @@ import type { Exercise } from '@/lib/exercise/schema';
 // en sí no tiene otra protección más que no estar enlazado desde ningún lado de la app — no es
 // una garantía criptográfica, solo "no listado".
 export async function POST(request: NextRequest) {
+    const auth = await requireUser();
+    if (auth.response) return auth.response;
+    const { supabase } = auth;
+
     try {
         const body = await request.json() as {
             ejerciciosPractica?: Exercise[];
@@ -37,7 +40,6 @@ export async function POST(request: NextRequest) {
         });
 
         const path = `${weekId}/${Date.now()}-solucion-docente.pdf`;
-        const supabase = createClient(await cookies());
         const { error: uploadError } = await supabase.storage
             .from('materials')
             .upload(path, buffer, { contentType: 'application/pdf' });

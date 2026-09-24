@@ -1,12 +1,15 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { requireUser } from '@/utils/supabase/requireUser';
 import { ClassKitContentSchema } from '@/lib/classKit/schema';
 import { renderClassKitPptx, type ClassKitTheme } from '@/lib/classKit/renderClassKitPptx';
 import { renderGuionDocentePdf } from '@/lib/classKit/renderGuionDocentePdf';
 import { renderGuiaTecnicaPdf } from '@/lib/classKit/renderGuiaTecnicaPdf';
 
 export async function POST(request: NextRequest) {
+    const auth = await requireUser();
+    if (auth.response) return auth.response;
+    const { supabase } = auth;
+
     try {
         const body = await request.json() as {
             content: unknown;
@@ -58,7 +61,6 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        const supabase = createClient(await cookies());
         const result: { pptxUrl?: string; guionUrl?: string; guiaUrl?: string } = {};
         for (const upload of uploads) {
             const { error: uploadError } = await supabase.storage
