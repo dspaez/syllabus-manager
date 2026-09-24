@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { parseExercisesContent, type Exercise, type ExercisesContent } from '@/lib/exercise/schema';
+import { parseExercisesContent, parseImportedExercises, type Exercise, type ExercisesContent } from '@/lib/exercise/schema';
+import { buildExercisesPrompt, CHAT_ITERATION_NOTE } from '@/lib/prompts/exercises';
 
 type GenerateType = 'exercises' | 'guide';
 type Dificultad = 'basico' | 'intermedio' | 'avanzado';
@@ -165,6 +166,14 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
     const [generatingDocente, setGeneratingDocente] = useState(false);
     const [docenteSolutionUrl, setDocenteSolutionUrl] = useState<string | null>(null);
 
+    // Camino "chat web": el docente copia el prompt (mismo texto que usa /api/generate, con el
+    // contexto real de la semana), itera en Claude.ai/ChatGPT y pega la respuesta final acá.
+    // Lo importado entra al mismo flujo de vista previa → guardar → PDF que lo generado adentro.
+    const [promptCopied, setPromptCopied] = useState(false);
+    const [promptFallback, setPromptFallback] = useState<string | null>(null);
+    const [importOpen, setImportOpen] = useState(false);
+    const [importText, setImportText] = useState('');
+
     function handleOpen() {
         setOpen(true);
         setTopic(weekTopic);
@@ -176,6 +185,11 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
         setSaved(false);
         setSavedFileUrl(null);
         setDocenteSolutionUrl(null);
+        setTruncationWarning(null);
+        setPromptCopied(false);
+        setPromptFallback(null);
+        setImportOpen(false);
+        setImportText('');
     }
 
     function handleClose() {
@@ -252,6 +266,51 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
         } finally {
             setLoading(false);
         }
+    }
+
+    function chatPrompt(): string {
+        return buildExercisesPrompt({
+            topic: topic.trim(),
+            subjectName,
+            techStack: techStack?.trim() || undefined,
+            courseMode,
+            exerciseProjectContext: courseMode === 'project' ? (exerciseProjectContext ?? undefined) : undefined,
+            exercisePreviousTitles: courseMode === 'topics' ? exercisePreviousTitles : undefined,
+            nivelDificultad: dificultad,
+            cantidadPractica,
+            cantidadTarea,
+        }) + CHAT_ITERATION_NOTE;
+    }
+
+    async function handleCopyPrompt() {
+        if (!topic.trim()) return;
+        const prompt = chatPrompt();
+        setPromptFallback(null);
+        try {
+            await navigator.clipboard.writeText(prompt);
+            setPromptCopied(true);
+            setTimeout(() => setPromptCopied(false), 2500);
+        } catch {
+            // Sin permiso de portapapeles (ej. navegador que lo bloquea): se muestra el texto
+            // para copiarlo a mano.
+            setPromptFallback(prompt);
+        }
+    }
+
+    function handleImport() {
+        const parsed = parseImportedExercises(importText);
+        if (!parsed.ok) {
+            setError(parsed.error);
+            return;
+        }
+        setError(null);
+        setTruncationWarning(null);
+        setSaved(false);
+        setSavedFileUrl(null);
+        setDocenteSolutionUrl(null);
+        setResult(parsed.content);
+        setImportOpen(false);
+        setImportText('');
     }
 
     async function handleSave() {
@@ -484,6 +543,58 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
                                 'Generar'
                             )}
                         </button>
+
+                        {type === 'exercises' && (
+                            <div className="flex flex-col gap-2 rounded-lg border border-violet-200 bg-violet-50/60 p-3">
+                                <p className="text-xs text-violet-900">
+                                    <span className="font-semibold">¿Prefieres generarlo en un chat web?</span> Copia el prompt
+                                    (ya incluye el contexto de esta semana y el formato), pégalo en Claude o ChatGPT, ajusta
+                                    ahí lo que quieras y pega aquí la respuesta final.
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        onClick={handleCopyPrompt}
+                                        disabled={!topic.trim()}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-100 disabled:opacity-50 transition-colors"
+                                    >
+                                        {promptCopied ? '✓ Prompt copiado' : '1. Copiar prompt para el chat'}
+                                    </button>
+                                    <button
+                                        onClick={() => setImportOpen((v) => !v)}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-100 transition-colors"
+                                    >
+                                        2. Importar respuesta del chat
+                                    </button>
+                                </div>
+                                {promptFallback && (
+                                    <textarea
+                                        readOnly
+                                        rows={6}
+                                        value={promptFallback}
+                                        onFocus={(e) => e.currentTarget.select()}
+                                        className="rounded-lg border border-violet-300 bg-white px-3 py-2 font-mono text-xs text-gray-800"
+                                    />
+                                )}
+                                {importOpen && (
+                                    <div className="flex flex-col gap-2">
+                                        <textarea
+                                            rows={8}
+                                            placeholder="Pega aquí la respuesta completa del chat (el JSON)..."
+                                            value={importText}
+                                            onChange={(e) => setImportText(e.target.value)}
+                                            className="rounded-lg border border-violet-300 bg-white px-3 py-2 font-mono text-xs text-gray-900 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                        />
+                                        <button
+                                            onClick={handleImport}
+                                            disabled={!importText.trim()}
+                                            className="self-start rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-50 transition-colors"
+                                        >
+                                            Validar e importar
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Error */}
                         {error && (
