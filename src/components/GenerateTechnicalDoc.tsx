@@ -32,6 +32,7 @@ export default function GenerateTechnicalDoc({
     const [loading, setLoading] = useState(false);
     const [draft, setDraft] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [truncated, setTruncated] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
 
@@ -59,6 +60,7 @@ export default function GenerateTechnicalDoc({
         if (!topic.trim()) return;
         setLoading(true);
         setError(null);
+        setTruncated(false);
         setDraft(null);
         setSaved(false);
 
@@ -80,6 +82,7 @@ export default function GenerateTechnicalDoc({
                 throw new Error(data.error ?? 'Error al generar el documento');
             }
 
+            setTruncated(res.headers.get('X-Generation-Truncated') === '1');
             const data = await res.json() as { document: string };
             setDraft(data.document);
         } catch (err) {
@@ -230,6 +233,12 @@ export default function GenerateTechnicalDoc({
                         {/* Error */}
                         {error && (
                             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 border border-red-200 transition-[opacity,transform] duration-150 ease-snappy starting:opacity-0 starting:-translate-y-1 motion-reduce:starting:translate-y-0">{error}</p>
+                        )}
+                        {truncated && draft !== null && (
+                            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                                ⚠ La respuesta de la IA se cortó antes de terminar: el documento está incompleto. No lo guardes
+                                así — se usaría como base de las semanas siguientes. Regenera, o completa el final a mano.
+                            </p>
                         )}
 
                         {/* Draft review — el usuario edita antes de guardar, nunca se autoguarda */}

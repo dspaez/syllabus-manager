@@ -48,6 +48,7 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
     const [loading, setLoading] = useState(false);
     const [plan, setPlan] = useState<CurriculumPlan | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [truncated, setTruncated] = useState(false);
 
     // Collapsible units — stores order numbers of collapsed units
     const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
@@ -83,6 +84,7 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
         if (!topic.trim()) return;
         setLoading(true);
         setError(null);
+        setTruncated(false);
         setPlan(null);
         setSaved(false);
         try {
@@ -98,6 +100,7 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
                 const data = await res.json();
                 throw new Error(data.error ?? 'Error al generar el plan');
             }
+            setTruncated(res.headers.get('X-Generation-Truncated') === '1');
             const data: CurriculumPlan = await res.json();
             setPlan(data);
         } catch (err) {
@@ -220,6 +223,11 @@ export default function CurriculumPlanner({ subjectId, subjectName }: Props) {
                             {error && (
                                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl transition-[opacity,transform] duration-150 ease-snappy starting:opacity-0 starting:-translate-y-1 motion-reduce:starting:translate-y-0">
                                     {error}
+                                </div>
+                            )}
+                            {truncated && plan && (
+                                <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3 rounded-xl">
+                                    ⚠ La respuesta de la IA se cortó antes de terminar: pueden faltar unidades o semanas al final del plan. Revísalo o regenera.
                                 </div>
                             )}
 

@@ -155,6 +155,9 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<GenerateResult | null>(null);
     const [error, setError] = useState<string | null>(null);
+    // Aviso (no error): la respuesta llegó cortada por límite de tokens — ver TRUNCATED_HEADER
+    // en /api/generate. El contenido se muestra igual para que el docente decida.
+    const [truncationWarning, setTruncationWarning] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [savedFileUrl, setSavedFileUrl] = useState<string | null>(null);
@@ -188,6 +191,7 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
         if (!topic.trim()) return;
         setLoading(true);
         setError(null);
+        setTruncationWarning(null);
         setResult(null);
         setSaved(false);
         setSavedFileUrl(null);
@@ -218,13 +222,30 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
                 throw new Error(data.error ?? 'Error al generar contenido');
             }
 
+            const truncated = res.headers.get('X-Generation-Truncated') === '1';
             const data = await res.json();
             if (type === 'exercises') {
                 const parsed = parseExercisesContent(JSON.stringify(data));
                 if (!parsed) throw new Error('La respuesta no tiene el formato esperado');
                 setResult(parsed);
+                const faltantes = [
+                    parsed.ejerciciosPractica.length < cantidadPractica
+                        ? `${parsed.ejerciciosPractica.length} de ${cantidadPractica} de práctica` : null,
+                    parsed.ejerciciosTarea.length < cantidadTarea
+                        ? `${parsed.ejerciciosTarea.length} de ${cantidadTarea} de tarea` : null,
+                ].filter(Boolean);
+                if (truncated || faltantes.length > 0) {
+                    setTruncationWarning(
+                        'La respuesta de la IA se cortó antes de terminar' +
+                        (faltantes.length > 0 ? ` — llegaron ${faltantes.join(' y ')}` : '') +
+                        '. Revisa que el último ejercicio y su solución estén completos, o regenera pidiendo menos ejercicios.',
+                    );
+                }
             } else {
                 setResult(data);
+                if (truncated) {
+                    setTruncationWarning('La respuesta de la IA se cortó antes de terminar — revisa que el final del contenido esté completo o regenera.');
+                }
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -467,6 +488,9 @@ export default function GenerateWithAI({ weekId, subjectName, weekTopic, techSta
                         {/* Error */}
                         {error && (
                             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 border border-red-200 transition-[opacity,transform] duration-150 ease-snappy starting:opacity-0 starting:-translate-y-1 motion-reduce:starting:translate-y-0">{error}</p>
+                        )}
+                        {truncationWarning && (
+                            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">⚠ {truncationWarning}</p>
                         )}
 
                         {/* Result */}

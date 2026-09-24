@@ -78,6 +78,7 @@ export default function GenerateAllContent({ unitId, subjectId, techStack }: Gen
     const supabase = createClient();
     const selectedWeeksList = weeks.filter((w) => selectedWeeks.has(w.id));
     let successCount = 0;
+    const truncatedWeeks: number[] = [];
 
     for (let i = 0; i < selectedWeeksList.length; i++) {
       const week = selectedWeeksList[i];
@@ -97,6 +98,7 @@ export default function GenerateAllContent({ unitId, subjectId, techStack }: Gen
           continue;
         }
 
+        if (response.headers.get('X-Generation-Truncated') === '1') truncatedWeeks.push(week.number);
         const content = await response.json();
 
         // Determinar nombre y tipo del material
@@ -141,6 +143,12 @@ export default function GenerateAllContent({ unitId, subjectId, techStack }: Gen
 
     setProgress(`✓ ${successCount} materiales generados correctamente`);
     setIsGenerating(false);
+    if (truncatedWeeks.length > 0) {
+      alert(
+        `La respuesta de la IA se cortó antes de terminar en: semana ${truncatedWeeks.join(', ')}. ` +
+        'Se guardaron igual — revisa que ese contenido esté completo o regenéralo.',
+      );
+    }
 
     // Esperar 2 segundos antes de cerrar para mostrar el resumen
     setTimeout(() => {

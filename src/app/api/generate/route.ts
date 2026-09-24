@@ -29,11 +29,11 @@ const MAX_OUTPUT_TOKENS: Partial<Record<string, number>> = {};
  * (ej. ejercicioClase) sobrevive aunque el siguiente (ej. una variante de ejerciciosTarea) se
  * haya cortado a medias.
  */
-function repairTruncatedJson(raw: string): unknown {
+function repairTruncatedJson(raw: string): { value: unknown; repaired: boolean } {
     const text = raw.trim().replace(/```json|```/g, '').trim();
 
     try {
-        return JSON.parse(text);
+        return { value: JSON.parse(text), repaired: false };
     } catch {
         // seguir reparando abajo
     }
@@ -41,7 +41,7 @@ function repairTruncatedJson(raw: string): unknown {
     const closed = closeOpenJson(text);
     if (closed) {
         try {
-            return JSON.parse(closed);
+            return { value: JSON.parse(closed), repaired: true };
         } catch {
             // seguir reparando abajo
         }
@@ -53,7 +53,7 @@ function repairTruncatedJson(raw: string): unknown {
         const candidate = closeOpenJson(text.slice(0, cut));
         if (candidate) {
             try {
-                return JSON.parse(candidate);
+                return { value: JSON.parse(candidate), repaired: true };
             } catch {
                 // seguir recortando
             }
@@ -110,6 +110,38 @@ function lastSafeCommaIndex(text: string): number {
         if (ch === ',') last = i;
     }
     return last;
+}
+
+// Aviso de truncamiento al cliente: header en vez de un campo en el JSON, porque varios
+// componentes guardan ese JSON tal cual en materials.description. Antes, un corte por
+// maxOutputTokens se "reparaba" en silencio y el docente recibía menos ejercicios o una
+// solucionDocente cortada sin enterarse (o, en technical_doc, un documento incompleto que se
+// guardaba como la nueva base del proyecto).
+const TRUNCATED_HEADER = 'X-Generation-Truncated';
+
+type GeminiResult = Awaited<ReturnType<GoogleGenAI['models']['generateContent']>>;
+
+// Cualquier finishReason distinto de STOP (MAX_TOKENS, SAFETY, ...) significa que el modelo
+// no terminó la respuesta por su cuenta.
+function geminiStoppedEarly(result: GeminiResult): boolean {
+    const reason = result.candidates?.[0]?.finishReason;
+    return Boolean(reason && reason !== 'STOP');
+}
+
+function geminiJsonResponse(label: string, result: GeminiResult): NextResponse {
+    const text = result.text ?? '';
+    let parsed;
+    try {
+        parsed = repairTruncatedJson(text);
+    } catch (err) {
+        console.error(`[generate:${label}] parseo falló — finishReason=${result.candidates?.[0]?.finishReason}, length=${text.length}`);
+        throw err;
+    }
+    const truncated = parsed.repaired || geminiStoppedEarly(result);
+    if (truncated) {
+        console.warn(`[generate:${label}] respuesta truncada — finishReason=${result.candidates?.[0]?.finishReason}, repaired=${parsed.repaired}`);
+    }
+    return NextResponse.json(parsed.value, truncated ? { headers: { [TRUNCATED_HEADER]: '1' } } : undefined);
 }
 
 const PROMPTS: Record<string, (topic: string, techStack?: string) => string> = {
@@ -309,7 +341,7 @@ function technicalDocPrompt(subjectName: string, weekTopic: string, previousDocu
 // ACUMULADO completo (arquitectura + modelo de datos + historial de tareas) antes de decidir
 // cómo extenderlo de forma consistente semana a semana — el análisis profundo importa más acá
 // que la latencia, a diferencia de exercises/curriculum/guide (ver LOW más abajo).
-async function generateTechnicalDoc(subjectName: string, weekTopic: string, previousDocument?: string, techStack?: string): Promise<string> {
+async function generateTechnicalDoc(subjectName: string, weekTopic: string, previousDocument?: string, techStack?: string): Promise<{ document: string; truncated: boolean }> {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
     const result = await ai.models.generateContent({
         model: 'gemini-3.7-flash',
@@ -322,7 +354,11 @@ async function generateTechnicalDoc(subjectName: string, weekTopic: string, prev
     let text = (result.text ?? '').trim();
     // Por si el modelo envuelve la respuesta en un bloque de código
     text = text.replace(/^```(?:markdown|md)?\n/, '').replace(/\n```$/, '').trim();
-    return text;
+    const truncated = geminiStoppedEarly(result);
+    if (truncated) {
+        console.warn(`[generate:technical_doc] respuesta truncada — finishReason=${result.candidates?.[0]?.finishReason}, length=${text.length}`);
+    }
+    return { document: text, truncated };
 }
 
 const CLASS_KIT_PEDAGOGY =
@@ -1019,13 +1055,13 @@ export async function POST(request: NextRequest) {
             if (!subjectName || !weekTopic) {
                 return NextResponse.json({ error: 'Missing required fields: subjectName and weekTopic' }, { status: 400 });
             }
-            const document = await generateTechnicalDoc(
+            const { document, truncated } = await generateTechnicalDoc(
                 subjectName,
                 weekTopic,
                 previousDocument?.trim() ? previousDocument : undefined,
                 techStack?.trim() || undefined,
             );
-            return NextResponse.json({ document });
+            return NextResponse.json({ document }, truncated ? { headers: { [TRUNCATED_HEADER]: '1' } } : undefined);
         }
 
         if (!type || !topic) {
@@ -1054,16 +1090,7 @@ export async function POST(request: NextRequest) {
                     tools: [{ googleSearch: {} }],
                 },
             });
-            const text = result.text ?? '';
-
-            let parsed;
-            try {
-                parsed = repairTruncatedJson(text);
-            } catch (err) {
-                console.error(`[generate:curriculum] parseo falló — finishReason=${result.candidates?.[0]?.finishReason}, length=${text.length}`);
-                throw err;
-            }
-            return NextResponse.json(parsed);
+            return geminiJsonResponse('curriculum', result);
         }
 
         if (type === 'exercises') {
@@ -1087,16 +1114,7 @@ export async function POST(request: NextRequest) {
                     thinkingConfig: LOW_LATENCY_THINKING,
                 },
             });
-            const text = result.text ?? '';
-
-            let parsed;
-            try {
-                parsed = repairTruncatedJson(text);
-            } catch (err) {
-                console.error(`[generate:exercises] parseo falló — finishReason=${result.candidates?.[0]?.finishReason}, length=${text.length}`);
-                throw err;
-            }
-            return NextResponse.json(parsed);
+            return geminiJsonResponse('exercises', result);
         }
 
         const promptFn = PROMPTS[type];
@@ -1112,17 +1130,7 @@ export async function POST(request: NextRequest) {
                 thinkingConfig: LOW_LATENCY_THINKING,
             },
         });
-        const text = result.text ?? '';
-
-        let parsed;
-        try {
-            parsed = repairTruncatedJson(text);
-        } catch (err) {
-            console.error(`[generate:${type}] parseo falló — finishReason=${result.candidates?.[0]?.finishReason}, length=${text.length}`);
-            throw err;
-        }
-
-        return NextResponse.json(parsed);
+        return geminiJsonResponse(type, result);
     } catch (error) {
         console.error('Generate error:', error)
         return NextResponse.json({ error: 'Failed to generate content' }, { status: 500 })
