@@ -144,26 +144,10 @@ function geminiJsonResponse(label: string, result: GeminiResult): NextResponse {
     return NextResponse.json(parsed.value, truncated ? { headers: { [TRUNCATED_HEADER]: '1' } } : undefined);
 }
 
+// El tipo "slides" (presentación en JSON de Gemini) se quitó junto con "Generar contenido de
+// toda la unidad" — las slides se generan con Class Kit. Los materiales viejos con ese JSON se
+// siguen mostrando en la vista pública (SlidesPresentation en materials/[id]/page.tsx).
 const PROMPTS: Record<string, (topic: string, techStack?: string) => string> = {
-    slides: (topic, techStack) =>
-        `Eres un docente universitario experto. Genera una presentación académica COMPLETA sobre ${topic} para estudiantes universitarios de tecnología. ` +
-        techStackContext(techStack) +
-        `\n\nREGLAS IMPORTANTES:\n` +
-        `- NO uses markdown (**negrita**, *itálica*) en ningún punto\n` +
-        `- Cada punto debe ser una explicación completa de 1-2 líneas\n` +
-        `- Incluye conceptos técnicos precisos con terminología correcta\n` +
-        `- Agrega ejemplos concretos y casos de uso reales\n` +
-        `- El contenido debe ser de nivel universitario, no básico\n` +
-        `\nGenera entre 12 y 15 slides con esta estructura:\n` +
-        `1. Introducción y contexto del tema\n` +
-        `2. Objetivos de aprendizaje (qué sabrá el estudiante al finalizar)\n` +
-        `3-12. Contenido técnico progresivo con ejemplos y aplicaciones\n` +
-        `13. Caso práctico o ejercicio aplicado\n` +
-        `14. Resumen y conclusiones\n` +
-        `15. Referencias y recursos adicionales\n` +
-        `\nCada slide: máximo 5 puntos, cada punto máximo 2 líneas, sin markdown, con terminología técnica precisa. ` +
-        `Responde SOLO en JSON sin markdown ni bloques de código: ` +
-        `{ "slides": [{ "title": "", "points": [], "keyword": "" }] }`,
     guide: (topic) =>
         `Genera una guía de estudio sobre ${topic} con: introducción, ` +
         `conceptos clave, ejemplos y resumen. Responde en español en formato JSON: ` +
@@ -222,7 +206,7 @@ CONVENCIONES DEL LENGUAJE: todo el código, los nombres y las convenciones se es
     );
 }
 
-// Separado del mapa genérico PROMPTS (a diferencia de slides/guide) porque necesita contexto
+// Separado del mapa genérico PROMPTS (a diferencia de guide) porque necesita contexto
 // real por course_mode — mismo mecanismo que class_kit, nunca mezclados: 'project' ancla al
 // documento técnico real (el más reciente disponible hasta esta semana, no necesariamente el
 // propio); 'topics' ancla a los títulos de las últimas semanas ya dictadas, para no repetir

@@ -7,7 +7,6 @@ import TogglePublish from '@/components/TogglePublish';
 import DeleteMaterial from '@/components/DeleteMaterial';
 import DeleteRowButton from '@/components/DeleteRowButton';
 import EditMaterialName from '@/components/EditMaterialName';
-import GenerateAllContent from '@/components/GenerateAllContent';
 import GenerateTechnicalDoc from '@/components/GenerateTechnicalDoc';
 import GenerateClassKit from '@/components/GenerateClassKit';
 import GenerateExam from '@/components/GenerateExam';
@@ -375,7 +374,6 @@ export default async function UnitPage({
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap shrink-0">
-                        <GenerateAllContent unitId={unitId} subjectId={id} techStack={s?.tech_stack ?? null} />
                         <Link
                             href={`/admin/subjects/${id}/units/${unitId}/weeks/new`}
                             className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
