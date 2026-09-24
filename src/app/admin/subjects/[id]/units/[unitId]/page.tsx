@@ -236,15 +236,17 @@ export default async function UnitPage({
     // allá de esta unidad, así que se trae aparte con una sola consulta subject-wide.
     let subjectWeeksOrdered: {
         id: string; number: number; title: string | null; technical_document_snapshot: string | null;
-        dictada: boolean; materials: { source: string | null; description: string | null }[] | null;
+        dictada: boolean; unit_id: string; materials: { source: string | null; description: string | null }[] | null;
     }[] = [];
+    const unitNameById = new Map<string, string>();
     if (s?.course_mode === 'project' || s?.course_mode === 'topics') {
         const { data: subjectUnitsOrdered } = await supabase
             .from('units')
-            .select('id, order')
+            .select('id, order, name')
             .eq('subject_id', id)
             .order('order', { ascending: true });
         const orderedUnitIds = (subjectUnitsOrdered ?? []).map((u) => u.id);
+        for (const un of subjectUnitsOrdered ?? []) unitNameById.set(un.id, un.name);
         if (orderedUnitIds.length > 0) {
             const { data: subjectWeeksRaw } = await supabase
                 .from('weeks')
@@ -257,6 +259,45 @@ export default async function UnitPage({
                 return ai !== bi ? ai - bi : a.number - b.number;
             });
         }
+    }
+
+    function weekLabel(w: { number: number; unit_id: string }): string {
+        const unitName = unitNameById.get(w.unit_id);
+        return `Semana ${w.number}` + (unitName ? ` — ${unitName}` : '');
+    }
+
+    // Base para extender el documento técnico de ESTA semana: el snapshot de la última semana
+    // ANTERIOR que tenga uno — nunca subjects.technical_document a secas, que es la versión más
+    // reciente: regenerar la semana 3 cuando el doc ya iba por la 7 metía arquitectura de semanas
+    // futuras en el snapshot de la 3. Tampoco el snapshot propio de esta semana: regenerarla
+    // aplicaría sus cambios dos veces. Fallback solo para materias anteriores a los snapshots
+    // (ninguna semana tiene uno): se usa el documento de la materia, salvo que se sepa que
+    // corresponde a esta semana o a una posterior.
+    function technicalDocBaseFor(week: Week): { document: string; label: string | null } | null {
+        const idx = subjectWeeksOrdered.findIndex((w) => w.id === week.id);
+        if (idx === -1) return null;
+        for (let i = idx - 1; i >= 0; i--) {
+            const w = subjectWeeksOrdered[i];
+            if (w.technical_document_snapshot?.trim()) return { document: w.technical_document_snapshot, label: weekLabel(w) };
+        }
+        const anySnapshot = subjectWeeksOrdered.some((w) => w.technical_document_snapshot?.trim());
+        if (anySnapshot || !s?.technical_document?.trim()) return null;
+        const docWeekIdx = s.technical_document_week_id
+            ? subjectWeeksOrdered.findIndex((w) => w.id === s.technical_document_week_id)
+            : -1;
+        if (docWeekIdx >= idx) return null;
+        return { document: s.technical_document, label: technicalDocLastUpdatedLabel };
+    }
+
+    // Semanas POSTERIORES que ya tienen snapshot propio — si hay alguna, esta semana no es la
+    // punta del documento: guardar solo actualiza su snapshot, no subjects.technical_document.
+    function laterTechnicalDocWeeksFor(week: Week): string[] {
+        const idx = subjectWeeksOrdered.findIndex((w) => w.id === week.id);
+        if (idx === -1) return [];
+        return subjectWeeksOrdered
+            .slice(idx + 1)
+            .filter((w) => w.technical_document_snapshot?.trim())
+            .map(weekLabel);
     }
 
     function exerciseProjectContextFor(week: Week): string | null {
@@ -464,7 +505,8 @@ export default async function UnitPage({
                                             <GenerateTechnicalDoc
                                                 subjectId={id}
                                                 subjectName={s.name}
-                                                currentDocument={s.technical_document}
+                                                baseDocument={technicalDocBaseFor(week)}
+                                                laterSnapshotWeeks={laterTechnicalDocWeeksFor(week)}
                                                 techStack={s.tech_stack}
                                                 weekTopic={[week.title ?? `Semana ${week.number}`, week.description].filter(Boolean).join(' — ')}
                                                 weekId={week.id}

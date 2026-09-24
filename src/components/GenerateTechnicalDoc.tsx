@@ -7,19 +7,24 @@ import { createClient } from '@/utils/supabase/client';
 interface Props {
     subjectId: string;
     subjectName: string;
-    currentDocument: string | null;
+    /** Documento sobre el que se extiende ESTA semana: el snapshot de la última semana anterior
+     *  que tenga uno (ver technicalDocBaseFor en units/[unitId]/page.tsx), o null si esta semana
+     *  arranca el proyecto. Nunca subjects.technical_document a secas si hay semanas posteriores. */
+    baseDocument: { document: string; label: string | null } | null;
+    /** Semanas posteriores que ya tienen snapshot — si hay alguna, esta semana no es la punta. */
+    laterSnapshotWeeks: string[];
     techStack: string | null;
     weekTopic: string;
     weekId: string;
-    /** "Semana X — Nombre de unidad" de a qué semana corresponde currentDocument, o null si no
-     *  hay dato (nunca se generó, o el subject nunca guardó technical_document_week_id). */
+    /** "Semana X — Nombre de unidad" del documento actual de la materia (subjects.technical_document),
+     *  o null si no hay dato. */
     lastUpdatedLabel: string | null;
     /** Si ESTA semana (weekId) ya tiene technical_document_snapshot propio. */
     hasSnapshot: boolean;
 }
 
 export default function GenerateTechnicalDoc({
-    subjectId, subjectName, currentDocument, techStack, weekTopic, weekId, lastUpdatedLabel, hasSnapshot,
+    subjectId, subjectName, baseDocument, laterSnapshotWeeks, techStack, weekTopic, weekId, lastUpdatedLabel, hasSnapshot,
 }: Props) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -30,7 +35,10 @@ export default function GenerateTechnicalDoc({
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
 
-    const hasPrevious = Boolean(currentDocument && currentDocument.trim());
+    const hasPrevious = Boolean(baseDocument?.document.trim());
+    // Si una semana posterior ya tiene snapshot, el documento de la materia (la punta) sigue
+    // siendo el de esa semana — guardar acá solo reemplaza el snapshot de esta semana.
+    const isLatest = laterSnapshotWeeks.length === 0;
 
     function handleOpen() {
         setOpen(true);
@@ -62,7 +70,7 @@ export default function GenerateTechnicalDoc({
                     type: 'technical_doc',
                     subjectName,
                     weekTopic: topic.trim(),
-                    previousDocument: hasPrevious ? currentDocument : undefined,
+                    previousDocument: hasPrevious ? baseDocument?.document : undefined,
                     techStack: techStack ?? undefined,
                 }),
             });
@@ -88,27 +96,27 @@ export default function GenerateTechnicalDoc({
 
         try {
             const supabase = createClient();
-            // Se guarda en 2 lugares: subjects.technical_document (el estado actual/completo,
-            // usado por el visor y como base para seguir extendiendo) y
-            // weeks.technical_document_snapshot (congelado para ESTA semana — evita que
-            // class_kit de una semana anterior lea arquitectura de semanas futuras).
-            const [{ error: subjectError }, { error: weekError }] = await Promise.all([
-                supabase
+            // weeks.technical_document_snapshot (congelado para ESTA semana — evita que class_kit
+            // de una semana anterior lea arquitectura de semanas futuras) se guarda siempre.
+            // subjects.technical_document (la punta, usada por "Sugerir próxima semana") solo si
+            // esta semana es la última con documento — si no, se pisaría la versión más reciente.
+            const { error: weekError } = await supabase
+                .from('weeks')
+                .update({ technical_document_snapshot: draft })
+                .eq('id', weekId);
+            if (weekError) throw weekError;
+
+            if (isLatest) {
+                const { error: subjectError } = await supabase
                     .from('subjects')
                     .update({
                         technical_document: draft,
                         technical_document_updated_at: new Date().toISOString(),
                         technical_document_week_id: weekId,
                     })
-                    .eq('id', subjectId),
-                supabase
-                    .from('weeks')
-                    .update({ technical_document_snapshot: draft })
-                    .eq('id', weekId),
-            ]);
-
-            if (subjectError) throw subjectError;
-            if (weekError) throw weekError;
+                    .eq('id', subjectId);
+                if (subjectError) throw subjectError;
+            }
             setSaved(true);
             router.refresh();
         } catch (err) {
@@ -152,8 +160,8 @@ export default function GenerateTechnicalDoc({
                                 </h2>
                                 <p className="text-xs text-gray-500 mt-0.5">
                                     {hasPrevious
-                                        ? 'Se extenderá el documento existente de esta materia con el tema de esta semana.'
-                                        : 'Esta materia no tiene documento aún — se generará la versión inicial.'}
+                                        ? `Se extenderá el documento de ${baseDocument?.label ?? 'la semana anterior'} con el tema de esta semana.`
+                                        : 'No hay documento en semanas anteriores — se generará la versión inicial del proyecto.'}
                                 </p>
                             </div>
                             <button
@@ -166,17 +174,26 @@ export default function GenerateTechnicalDoc({
                             </button>
                         </div>
 
-                        {/* Documento actual — antes no había forma de verlo sin generar uno nuevo encima */}
+                        {!isLatest && (
+                            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                Ya hay documento en semanas posteriores ({laterSnapshotWeeks.join(', ')}). Al guardar solo se
+                                reemplaza el documento de esta semana: el de la materia
+                                {lastUpdatedLabel ? ` (${lastUpdatedLabel})` : ''} no cambia, y esas semanas no se
+                                actualizan solas — si este cambio les afecta, regeneralas después.
+                            </p>
+                        )}
+
+                        {/* Documento base — antes no había forma de verlo sin generar uno nuevo encima */}
                         {hasPrevious && (
                             <details open className="rounded-lg border border-gray-200 bg-gray-50">
                                 <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-gray-700">
-                                    Documento técnico actual
-                                    {lastUpdatedLabel && (
-                                        <span className="ml-2 font-normal text-gray-500">— Última actualización: {lastUpdatedLabel}</span>
+                                    Documento base
+                                    {baseDocument?.label && (
+                                        <span className="ml-2 font-normal text-gray-500">— {baseDocument.label}</span>
                                     )}
                                 </summary>
                                 <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap wrap-break-word border-t border-gray-200 px-3 py-2 text-xs text-gray-700 font-mono">
-                                    {currentDocument}
+                                    {baseDocument?.document}
                                 </pre>
                             </details>
                         )}
@@ -249,7 +266,7 @@ export default function GenerateTechnicalDoc({
                                                 Guardando...
                                             </>
                                         ) : (
-                                            'Confirmar y guardar en la materia'
+                                            isLatest ? 'Confirmar y guardar en la materia' : 'Confirmar y guardar solo en esta semana'
                                         )}
                                     </button>
                                 )}
