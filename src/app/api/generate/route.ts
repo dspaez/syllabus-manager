@@ -206,25 +206,94 @@ CONVENCIONES DEL LENGUAJE: todo el código, los nombres y las convenciones se es
     );
 }
 
-// Separado del mapa genérico PROMPTS (a diferencia de guide) porque necesita contexto
-// real por course_mode — mismo mecanismo que class_kit, nunca mezclados: 'project' ancla al
-// documento técnico real (el más reciente disponible hasta esta semana, no necesariamente el
-// propio); 'topics' ancla a los títulos de las últimas semanas ya dictadas, para no repetir
-// conceptos. Si no hay contexto real, no se inventa que sí existe — mismo principio de siempre.
+const PROJECT_DIFFICULTY_GUIDANCE: Record<string, string> = {
+    basico: 'una sola pieza del proyecto (una pantalla, un componente o un endpoint) aplicando el tema de ' +
+        'forma directa, sin combinar varias técnicas a la vez.',
+    intermedio: 'una funcionalidad chica de punta a punta (ej. pantalla + validación + llamada a la API o ' +
+        'persistencia) que combina 2 o 3 técnicas del tema, con al menos un caso de error real.',
+    avanzado: 'una funcionalidad completa que integra el tema con lo ya construido en semanas anteriores, ' +
+        'con varios estados (carga, vacío, error), validaciones reales y reutilización de la arquitectura existente.',
+};
+
+// Materias por proyecto (apps web/móviles): la plantilla de exercisesPrompt es de consola/POO
+// (menú, imprimir, atributos/getters/setters) y no encaja con construir una app. Acá los
+// requisitos se escriben en términos de archivos, pantallas, componentes, rutas y estado,
+// siempre dentro de la arquitectura del documento técnico si existe.
+function projectExercisesPrompt(
+    topic: string,
+    subjectName: string | undefined,
+    techStack: string | undefined,
+    exerciseProjectContext: string | undefined,
+    nivelDificultad: string,
+    cantidadPractica: number,
+    cantidadTarea: number,
+): string {
+    const contextBlock = exerciseProjectContext?.trim()
+        ? `\nDocumento técnico real del proyecto hasta este punto del curso — TODOS los ejercicios se construyen ` +
+          `sobre esta arquitectura (mismas carpetas, convenciones, entidades y librerías); un proyecto o stack ` +
+          `paralelo NO:\n${exerciseProjectContext.trim()}\n`
+        : `\nTodavía no hay documento técnico del proyecto: planteá ejercicios autocontenidos coherentes con el ` +
+          `tema y el stack, sin inventar que existe código previo concreto.\n`;
+    const difficultyKey = PROJECT_DIFFICULTY_GUIDANCE[nivelDificultad] ? nivelDificultad : 'intermedio';
+
+    return (
+        `Eres un docente universitario diseñando ejercicios de práctica sobre ${topic}` +
+        (subjectName?.trim() ? `, en la materia "${subjectName.trim()}"` : '') +
+        `, donde los estudiantes construyen una aplicación completa (web o móvil) que crece semana a semana. ` +
+        `Precisión y detalle de un docente experimentado — nunca genérico ni superficial.\n` +
+        techStackContext(techStack) +
+        languageConventionsRule(subjectName, techStack) +
+        contextBlock +
+        `\nNivel de dificultad pedido: ${DIFFICULTY_LABELS[difficultyKey]}. ${PROJECT_DIFFICULTY_GUIDANCE[difficultyKey]}\n` +
+        `\nIMPORTANTE sobre el alcance: practicar EXACTAMENTE lo que describe "${topic}", ajustado al nivel de ` +
+        `dificultad — no te adelantes a técnicas de temas que todavía no se vieron.\n` +
+        `\nNO son programas de consola: nunca pidas un menú de consola ni "imprimir" en consola. Omití el campo ` +
+        `"menu" por completo.\n` +
+        `\nNIVEL DE DETALLE OBLIGATORIO en "requerimientos" — cada ítem preciso y evaluable, según aplique:\n` +
+        `- Ruta exacta de cada archivo a crear o modificar dentro del proyecto.\n` +
+        `- Pantallas/componentes: qué elementos muestran y cómo responden a la interacción.\n` +
+        `- Rutas de navegación o endpoints: método, URL, cuerpo y respuesta esperada.\n` +
+        `- Modelo de datos o estado que se agrega o modifica.\n` +
+        `- Validaciones: la condición EXACTA y el mensaje LITERAL que ve el usuario en la interfaz.\n` +
+        `- Estados de carga, vacío y error cuando haya datos remotos.\n` +
+        `\nGenerá:\n` +
+        `1. ${cantidadPractica} ejercicio(s) de práctica (ejerciciosPractica) — cada uno sobre una funcionalidad ` +
+        `DISTINTA del proyecto. Cada uno debe tener:\n` +
+        `   - titulo: título breve.\n` +
+        `   - contexto: qué funcionalidad se agrega a la app y por qué, y qué parte existente se reutiliza.\n` +
+        `   - requerimientos: lista paso a paso con el nivel de detalle exigido arriba.\n` +
+        `   - checklist: 5 a 10 preguntas de autoevaluación tipo "¿Por qué...?" o "¿Qué pasaría si...?" sobre ` +
+        `decisiones concretas del ejercicio (ej. "¿Qué ve el usuario si la API responde con error?") — NUNCA ` +
+        `reveles la respuesta.\n` +
+        `   - conceptos: 3 a 6 conceptos técnicos concretos que se practican (se usa para no repetir contenido ` +
+        `en semanas futuras).\n` +
+        `   - solucionDocente: el código COMPLETO, organizado por archivo — antes de cada archivo una línea de ` +
+        `comentario con su ruta exacta (ej. "// archivo: src/screens/ProductoForm.tsx").\n` +
+        `2. ${cantidadTarea} variante(s) para tarea en casa (ejerciciosTarea) — misma técnica y dificultad ` +
+        `equivalente, aplicada a OTRA entidad o módulo del mismo proyecto (mismo patrón: titulo, contexto, ` +
+        `requerimientos, checklist, solucionDocente — sin "conceptos", ese campo es solo de ejerciciosPractica). ` +
+        `No son simplificaciones.\n` +
+        `Si ${cantidadPractica} o ${cantidadTarea} es 0, devolvé un array vacío para ese campo, no lo omitas.\n` +
+        `Responde en español, SOLO en formato JSON sin markdown ni bloques de código: ` +
+        `{ "ejerciciosPractica": [{ "titulo": "", "contexto": "", "requerimientos": [], "checklist": [], "conceptos": [], "solucionDocente": "" }], ` +
+        `"ejerciciosTarea": [{ "titulo": "", "contexto": "", "requerimientos": [], "checklist": [], "solucionDocente": "" }] }`
+    );
+}
+
+// Plantilla de consola/POO para materias por temas (Programación, POO, Fundamentos, IA) —
+// las materias por proyecto usan projectExercisesPrompt. Separado del mapa genérico PROMPTS
+// (a diferencia de guide) porque ancla a los títulos y conceptos de las últimas semanas ya
+// dictadas, para no repetir. Si no hay contexto real, no se inventa que sí existe.
 function exercisesPrompt(
     topic: string,
     subjectName: string | undefined,
     techStack: string | undefined,
-    courseMode: string | null | undefined,
-    exerciseProjectContext: string | undefined,
     exercisePreviousTitles: string[] | undefined,
     nivelDificultad: string,
     cantidadPractica: number,
     cantidadTarea: number,
 ): string {
-    const contextBlock = courseMode === 'project' && exerciseProjectContext?.trim()
-        ? `\nContexto real del proyecto hasta este punto del curso (arquitectura y convenciones ya construidas — el ejercicio tiene que ser coherente con esto, un dominio/stack paralelo NO):\n${exerciseProjectContext.trim()}\n`
-        : courseMode === 'topics' && exercisePreviousTitles && exercisePreviousTitles.length > 0
+    const contextBlock = exercisePreviousTitles && exercisePreviousTitles.length > 0
         ? `\nTemas y ejercicios de semanas anteriores marcadas por el docente como YA DICTADAS (nunca semanas ` +
           `solo planificadas o con título cargado pero sin dar todavía — esas quedan afuera de esta lista a ` +
           `propósito): no repitas los conceptos ya practicados ahí, construí sobre ellos cuando aplique:\n- ${exercisePreviousTitles.join('\n- ')}\n`
@@ -870,6 +939,47 @@ const EXAM_SYSTEM_PROMPT =
     `- Si te paso contexto real de semanas/ejercicios anteriores, el examen tiene que evaluar ` +
     `contenido YA visto en clase — no un tema que todavía no se dictó.`;
 
+// Materias por proyecto (apps web/móviles completas que crecen semana a semana): el examen no
+// es un programa de consola con menú sino una funcionalidad sobre el proyecto REAL del curso.
+// Las versiones no pueden cambiar de dominio (el proyecto es uno solo) — cambian la entidad o
+// módulo del proyecto sobre el que se aplica la misma técnica.
+const EXAM_PROJECT_SYSTEM_PROMPT =
+    `Sos un docente universitario diseñando una evaluación práctica para una materia donde los ` +
+    `estudiantes construyen una aplicación completa (web o móvil) que crece semana a semana. El ` +
+    `examen pide implementar una funcionalidad SOBRE ESE PROYECTO, con MÚLTIPLES VERSIONES ` +
+    `paralelas para evitar copia.\n\n` +
+    `Reglas estrictas:\n` +
+    `- Si te paso el documento técnico del proyecto, el examen tiene que construir sobre ESA ` +
+    `arquitectura real: mismas carpetas, convenciones, entidades, rutas y librerías. Nunca ` +
+    `propongas un proyecto paralelo ni otra arquitectura. Si no te lo paso, planteá una ` +
+    `funcionalidad autocontenida coherente con el tema y el stack, sin inventar que existe ` +
+    `código previo concreto.\n` +
+    `- NO es un programa de consola: nunca pidas un menú de consola ni "imprimir" en consola. ` +
+    `Omití el campo "menu".\n` +
+    `- TODAS las versiones evalúan exactamente la misma técnica con la misma dificultad y la ` +
+    `misma cantidad de requisitos (ej. si una pide un formulario con validaciones, navegación a ` +
+    `un detalle y persistencia vía API, todas piden eso mismo). Solo cambia la entidad o módulo ` +
+    `del proyecto sobre el que se aplica (ej. versión A sobre productos, B sobre clientes, C ` +
+    `sobre pedidos). Si el proyecto no tiene suficientes entidades, agregá entidades nuevas ` +
+    `plausibles para ese mismo dominio, coherentes con la arquitectura.\n` +
+    `- nombrePrograma: nombre corto de la funcionalidad de esa versión (ej. "Gestión de categorías").\n` +
+    `- contexto: qué funcionalidad se agrega al proyecto y por qué, sobre qué entidad, y qué ` +
+    `parte del proyecto existente se reutiliza.\n` +
+    `- requisitos: concretos y evaluables, con el mismo nivel de precisión que un enunciado real ` +
+    `— nunca vagos tipo "que funcione bien". Cada "detalle" especifica, según aplique: ruta ` +
+    `exacta de cada archivo a crear o modificar; pantallas/componentes y los elementos que ` +
+    `muestran; rutas o endpoints (método, URL, cuerpo, respuesta); modelo o estado involucrado; ` +
+    `validaciones con la condición EXACTA y el mensaje LITERAL que ve el usuario en la interfaz; ` +
+    `estados de carga, vacío y error; y el comportamiento esperado de punta a punta. Usá ` +
+    `"subitems" para casos especiales.\n` +
+    `- entregable: qué entrega exactamente el estudiante (ej. rama o commit con la funcionalidad, ` +
+    `archivos modificados, capturas o video corto de la funcionalidad andando).\n` +
+    `- instrucciones: reglas generales del examen (herramientas permitidas, qué entregar, que la ` +
+    `app no debe romperse ante entradas inválidas) — NUNCA menciones tiempo estimado ni ` +
+    `puntaje, esos los define el docente aparte.\n` +
+    `- El examen evalúa contenido YA visto en clase según el contexto que te paso — nunca un ` +
+    `tema que todavía no se dictó.`;
+
 async function generateExam(params: {
     subjectName: string;
     subjectDescription?: string;
@@ -877,7 +987,10 @@ async function generateExam(params: {
     techStack?: string;
     numVersiones: number;
     exercisePreviousTitles?: string[];
+    courseMode?: string | null;
+    projectContext?: string;
 }): Promise<Exam> {
+    const isProject = params.courseMode === 'project';
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const parts: string[] = [
@@ -891,11 +1004,14 @@ async function generateExam(params: {
     if (params.exercisePreviousTitles && params.exercisePreviousTitles.length > 0) {
         parts.push(`Temas ya dictados en semanas anteriores (el examen debe evaluar contenido de esta lista o del tema indicado, nunca algo no visto): ${params.exercisePreviousTitles.join(', ')}.`);
     }
+    if (isProject && params.projectContext?.trim()) {
+        parts.push(`Documento técnico del proyecto hasta esta semana (arquitectura y convenciones reales):\n${params.projectContext.trim()}`);
+    }
 
     const stream = anthropic.messages.stream({
         model: 'claude-sonnet-5',
         max_tokens: CLASS_KIT_MAX_TOKENS,
-        system: EXAM_SYSTEM_PROMPT,
+        system: isProject ? EXAM_PROJECT_SYSTEM_PROMPT : EXAM_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: parts.join('\n\n') }],
         output_config: { format: zodOutputFormat(ExamSchema) },
     });
@@ -986,6 +1102,8 @@ export async function POST(request: NextRequest) {
                 techStack: techStack?.trim() || undefined,
                 numVersiones,
                 exercisePreviousTitles,
+                courseMode: courseMode ?? null,
+                projectContext: projectContext?.trim() || undefined,
             });
             return NextResponse.json({ exam });
         }
@@ -1089,10 +1207,15 @@ export async function POST(request: NextRequest) {
             const exercisesMaxTokens = Math.min(65536, 8192 + (practica + tarea) * 6000);
             const result = await ai.models.generateContent({
                 model: 'gemini-3.7-flash',
-                contents: exercisesPrompt(
-                    topic, subjectName?.trim() || undefined, techStack?.trim() || undefined, courseMode, exerciseProjectContext, exercisePreviousTitles,
-                    nivelDificultad?.trim() || 'intermedio', practica, tarea,
-                ),
+                contents: courseMode === 'project'
+                    ? projectExercisesPrompt(
+                        topic, subjectName?.trim() || undefined, techStack?.trim() || undefined, exerciseProjectContext,
+                        nivelDificultad?.trim() || 'intermedio', practica, tarea,
+                    )
+                    : exercisesPrompt(
+                        topic, subjectName?.trim() || undefined, techStack?.trim() || undefined, exercisePreviousTitles,
+                        nivelDificultad?.trim() || 'intermedio', practica, tarea,
+                    ),
                 config: {
                     maxOutputTokens: exercisesMaxTokens,
                     thinkingConfig: LOW_LATENCY_THINKING,

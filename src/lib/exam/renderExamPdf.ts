@@ -21,7 +21,7 @@ function renderVersion(
         doc, marginX, contentW, 18, accentRgb,
         `${subjectName} · Versión ${version.version.toUpperCase()}`,
         exam.titulo,
-        'Complete el programa en su editor de código y entregue el archivo solicitado.',
+        'Resuelva lo solicitado en su editor de código y entregue lo indicado en "Entregable".',
     );
 
     y = addMetaTable(doc, marginX, y, contentW) + 8;
@@ -40,8 +40,14 @@ function renderVersion(
 
     y = ensureSpace(doc, y, 24, pageHeight);
     y = addSectionHeading(doc, marginX, y, accentRgb, 'Enunciado');
-    y = addParagraph(doc, marginX, y, contentW, pageHeight, `Escriba un programa llamado ${version.nombrePrograma} que muestre el siguiente menú:`) + 4;
-    y = addMonoBox(doc, marginX, y, contentW, pageHeight, version.menu) + 8;
+    // Sin menú = examen de modo proyecto: una funcionalidad sobre el proyecto real, no un
+    // programa de consola.
+    if (version.menu && version.menu.length > 0) {
+        y = addParagraph(doc, marginX, y, contentW, pageHeight, `Escriba un programa llamado ${version.nombrePrograma} que muestre el siguiente menú:`) + 4;
+        y = addMonoBox(doc, marginX, y, contentW, pageHeight, version.menu) + 8;
+    } else {
+        y = addParagraph(doc, marginX, y, contentW, pageHeight, `Implemente en el proyecto la funcionalidad "${version.nombrePrograma}" cumpliendo los requisitos siguientes.`) + 8;
+    }
 
     y = ensureSpace(doc, y, 24, pageHeight);
     y = addSectionHeading(doc, marginX, y, accentRgb, 'Requisitos');

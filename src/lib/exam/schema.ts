@@ -12,11 +12,13 @@ const RequisitoSchema = z.object({
 
 const ExamVersionSchema = z.object({
     version: z.string().describe('Identificador corto de la versión, ej. "A", "B", "C".'),
-    nombrePrograma: z.string().describe('Nombre de la clase/programa principal en el stack indicado, ej. "ConsultorioDental".'),
-    contexto: z.string().describe('Escenario de negocio de esta versión — dominio distinto al de las demás versiones, mismo patrón estructural.'),
-    menu: z.array(z.string()).describe('Líneas EXACTAS del menú que el programa debe mostrar, en orden — mismas opciones que las demás versiones, solo cambia el dominio.'),
+    nombrePrograma: z.string().describe('Materias por temas: nombre de la clase/programa principal, ej. "ConsultorioDental". Materias por proyecto: nombre corto de la funcionalidad a implementar, ej. "Gestión de categorías".'),
+    contexto: z.string().describe('Materias por temas: escenario de negocio de esta versión, con un dominio distinto al de las demás. Materias por proyecto: qué funcionalidad del proyecto real se implementa y sobre qué entidad.'),
+    // Opcional desde que existe el examen de modo proyecto (apps web/móviles, sin menú de
+    // consola) — los exámenes ya guardados con menú siguen validando igual.
+    menu: z.array(z.string()).optional().describe('SOLO programas de consola: líneas EXACTAS del menú, en orden, mismas opciones en todas las versiones. Omitir en materias por proyecto.'),
     requisitos: z.array(RequisitoSchema),
-    entregable: z.string().describe('Qué debe entregar el estudiante exactamente, ej. nombre del archivo fuente con la extensión del lenguaje del curso.'),
+    entregable: z.string().describe('Qué debe entregar el estudiante exactamente, ej. el archivo fuente, o en un proyecto los archivos/rama/commit con la funcionalidad.'),
 });
 
 export const ExamSchema = z.object({

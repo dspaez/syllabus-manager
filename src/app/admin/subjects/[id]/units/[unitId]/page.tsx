@@ -498,6 +498,8 @@ export default async function UnitPage({
                                             techStack={s?.tech_stack ?? null}
                                             accentColor={s?.accent_color ?? null}
                                             exercisePreviousTitles={exercisePreviousTitlesFor(week)}
+                                            courseMode={s?.course_mode ?? null}
+                                            projectContext={s?.course_mode === 'project' ? exerciseProjectContextFor(week) : null}
                                         />
                                         {s?.course_mode === 'project' && (
                                             <GenerateTechnicalDoc

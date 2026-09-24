@@ -13,12 +13,16 @@ interface Props {
     techStack?: string | null;
     accentColor?: string | null;
     exercisePreviousTitles?: string[];
+    courseMode?: string | null;
+    /** Solo modo proyecto: snapshot del documento técnico más reciente hasta esta semana. */
+    projectContext?: string | null;
 }
 
 type Stage = 'form' | 'content' | 'saved';
 
 export default function GenerateExam({
     weekId, subjectName, subjectDescription, weekTopic, techStack, accentColor, exercisePreviousTitles,
+    courseMode, projectContext,
 }: Props) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -71,6 +75,8 @@ export default function GenerateExam({
                     techStack: techStack ?? undefined,
                     numVersiones,
                     exercisePreviousTitles,
+                    courseMode: courseMode ?? undefined,
+                    projectContext: courseMode === 'project' ? (projectContext ?? undefined) : undefined,
                 }),
             });
 
